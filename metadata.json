@@ -1,0 +1,8 @@
+{
+  "name": "FiliF Bible+",
+  "description": "A comprehensive, interactive Bible study ecosystem for all ages, featuring personalized paths for kids, teens, youth, and adults with daily challenges, quizzes, and gamified growth.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
