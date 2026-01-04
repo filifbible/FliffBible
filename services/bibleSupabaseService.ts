@@ -41,9 +41,21 @@ export interface BibleBook {
  */
 export const BibleSupabaseService = {
   /**
+   * Verifica se o cliente Supabase está disponível
+   */
+  isAvailable: (): boolean => {
+    return supabase !== null;
+  },
+
+  /**
    * Busca todos os testamentos
    */
   getTestaments: async (): Promise<Testament[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('testament')
       .select('*')
@@ -62,6 +74,11 @@ export const BibleSupabaseService = {
    * @param testamentId - ID do testamento (1 = Antigo, 2 = Novo)
    */
   getBooksByTestament: async (testamentId: number): Promise<Book[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('book')
       .select('*')
@@ -80,6 +97,11 @@ export const BibleSupabaseService = {
    * Busca todos os livros (ambos testamentos)
    */
   getAllBooks: async (): Promise<Book[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('book')
       .select('*')
@@ -99,6 +121,11 @@ export const BibleSupabaseService = {
    * @param name - Nome do livro
    */
   getBookByName: async (name: string): Promise<Book | null> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('book')
       .select('*')
@@ -118,6 +145,11 @@ export const BibleSupabaseService = {
    * @param bookId - ID do livro
    */
   getBookChapterCount: async (bookId: number): Promise<number> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return 0;
+    }
+
     const { data, error } = await supabase
       .from('verse')
       .select('chapter')
@@ -139,6 +171,11 @@ export const BibleSupabaseService = {
    * @param chapter - Número do capítulo
    */
   getChapterVerses: async (bookId: number, chapter: number): Promise<Verse[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('verse')
       .select('*')
@@ -161,6 +198,11 @@ export const BibleSupabaseService = {
    * @param verse - Número do versículo
    */
   getVerse: async (bookId: number, chapter: number, verse: number): Promise<Verse | null> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('verse')
       .select('*')
@@ -182,6 +224,11 @@ export const BibleSupabaseService = {
    * @param limit - Número de versículos a retornar
    */
   getRandomVerses: async (limit: number = 1): Promise<Verse[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('verse')
       .select('*')
@@ -201,6 +248,11 @@ export const BibleSupabaseService = {
    * @param limit - Número máximo de resultados
    */
   searchVerses: async (searchTerm: string, limit: number = 50): Promise<Verse[]> => {
+    if (!supabase) {
+      console.warn('Supabase client not available');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('verse')
       .select('*')
