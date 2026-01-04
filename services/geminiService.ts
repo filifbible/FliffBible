@@ -2,9 +2,35 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProfileType, QuizQuestion, BibleVerse } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy initialization to avoid errors on app startup
+let ai: GoogleGenAI | null = null;
+
+const getAI = (): GoogleGenAI | null => {
+  if (ai) return ai;
+  
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+  
+  if (!apiKey) {
+    console.warn('⚠️ GEMINI_API_KEY not configured. AI features will be disabled.');
+    return null;
+  }
+  
+  try {
+    ai = new GoogleGenAI({ apiKey });
+    return ai;
+  } catch (error) {
+    console.error('Failed to initialize GoogleGenAI:', error);
+    return null;
+  }
+};
 
 export const generateDailyDevotional = async (profile: ProfileType) => {
+  const aiClient = getAI();
+  if (!aiClient) {
+    console.warn('AI client not available for devotional generation');
+    return null;
+  }
+
   const challengeContext = profile === ProfileType.KIDS 
     ? "O desafio deve ser algo lúdico: desenhar uma cena bíblica ou fazer uma oração simples."
     : "O desafio deve ser prático: um exercício de gratidão, uma leitura específica ou uma ação de bondade.";
@@ -15,7 +41,7 @@ export const generateDailyDevotional = async (profile: ProfileType) => {
   Use Português Brasil.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -41,6 +67,12 @@ export const generateDailyDevotional = async (profile: ProfileType) => {
 };
 
 export const generateKidVerse = async () => {
+  const aiClient = getAI();
+  if (!aiClient) {
+    console.warn('AI client not available, returning fallback verse');
+    return { ref: "Salmos 23:1", text: "O Senhor é o meu pastor; nada me faltará." };
+  }
+
   const themes = ["animais", "natureza", "amor", "coragem", "alegria", "família", "criação", "estrelas", "proteção"];
   const randomTheme = themes[Math.floor(Math.random() * themes.length)];
   
@@ -49,7 +81,7 @@ export const generateKidVerse = async () => {
   Retorne JSON: { "ref": "string", "text": "string" }. Use Português Brasil.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -71,10 +103,16 @@ export const generateKidVerse = async () => {
 };
 
 export const getBibleChapter = async (book: string, chapter: number): Promise<BibleVerse[]> => {
+  const aiClient = getAI();
+  if (!aiClient) {
+    console.warn('AI client not available for Bible chapter generation');
+    return [];
+  }
+
   const prompt = `Return JSON array of verses for ${book} ${chapter} (Portuguese ARA). Format: [{ "book": "${book}", "chapter": ${chapter}, "verse": number, "text": "string" }]`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -103,10 +141,16 @@ export const getBibleChapter = async (book: string, chapter: number): Promise<Bi
 };
 
 export const generateQuiz = async (profile: ProfileType) => {
+  const aiClient = getAI();
+  if (!aiClient) {
+    console.warn('AI client not available for quiz generation');
+    return [];
+  }
+
   const prompt = `3 biblia quiz ${profile}. JSON array: {question, options, correctIndex}.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
