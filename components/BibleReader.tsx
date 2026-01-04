@@ -1,8 +1,7 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { BIBLE_BOOKS, MOCK_VERSES } from '../constants';
-import { BibleBook, BibleVerse } from '../types';
-import { getBibleChapter } from '../services/geminiService';
+import BibleSupabaseService, { BibleBook, Verse } from '../services/bibleSupabaseService';
 
 interface BibleReaderProps {
   onFavorite: (ref: string) => void;
@@ -10,18 +9,39 @@ interface BibleReaderProps {
 }
 
 const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
+  const [books, setBooks] = useState<BibleBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chapterVerses, setChapterVerses] = useState<BibleVerse[]>([]);
+  const [chapterVerses, setChapterVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingBooks, setLoadingBooks] = useState(false);
   const [activeTestament, setActiveTestament] = useState<'Old' | 'New'>('Old');
 
+
+  // Carregar livros quando o testamento mudar
+  useEffect(() => {
+    const loadBooks = async () => {
+      setLoadingBooks(true);
+      try {
+        const booksData = await BibleSupabaseService.getBooksForReader(activeTestament);
+        setBooks(booksData);
+      } catch (error) {
+        console.error('Erro ao carregar livros:', error);
+        setBooks([]);
+      } finally {
+        setLoadingBooks(false);
+      }
+    };
+    loadBooks();
+  }, [activeTestament]);
+
+  // Carregar versículos quando livro e capítulo forem selecionados
   useEffect(() => {
     if (selectedBook && selectedChapter) {
-      const fetchText = async () => {
+      const fetchVerses = async () => {
         setLoading(true);
-        const cacheKey = `bible_cache_${selectedBook.name}_${selectedChapter}`;
+        const cacheKey = `bible_cache_${selectedBook.id}_${selectedChapter}`;
         const cached = localStorage.getItem(cacheKey);
 
         if (cached) {
@@ -30,32 +50,22 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
           return;
         }
 
-        const local = MOCK_VERSES.filter(v => 
-          v.book === selectedBook.name && v.chapter === selectedChapter
-        );
-        
-        if (local.length > 0) {
-          setChapterVerses(local);
-          setLoading(false);
-        } else {
-          try {
-            const remote = await getBibleChapter(selectedBook.name, selectedChapter);
-            if (remote && remote.length > 0) {
-              setChapterVerses(remote);
-              localStorage.setItem(cacheKey, JSON.stringify(remote));
-            }
-          } catch (e) {
-            console.error("Bible fetch failed", e);
-          }
+        try {
+          const verses = await BibleSupabaseService.getChapterVerses(selectedBook.id, selectedChapter);
+          setChapterVerses(verses);
+          localStorage.setItem(cacheKey, JSON.stringify(verses));
+        } catch (error) {
+          console.error('Erro ao buscar versículos:', error);
+          setChapterVerses([]);
+        } finally {
           setLoading(false);
         }
       };
-      fetchText();
+      fetchVerses();
     }
   }, [selectedBook, selectedChapter]);
 
-  const filteredBooks = BIBLE_BOOKS.filter(b => 
-    b.testament === activeTestament &&
+  const filteredBooks = books.filter(b =>
     b.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -164,10 +174,10 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
             <div className="animate-in fade-in duration-1000 relative z-10">
               <div className="max-w-3xl mx-auto space-y-12">
                 {chapterVerses.map(v => {
-                  const ref = `${v.book} ${v.chapter}:${v.verse}`;
+                  const ref = `${selectedBook!.name} ${selectedChapter}:${v.verse}`;
                   const isFav = favorites.includes(ref);
                   return (
-                    <div key={ref} className="group relative">
+                    <div key={v.id} className="group relative">
                       <p className="text-2xl leading-[1.7] text-gray-800 dark:text-gray-200 font-serif">
                         <span className="text-indigo-600 dark:text-indigo-400 font-black mr-4 text-sm select-none align-top italic opacity-80">{v.verse}</span>
                         {v.text}
