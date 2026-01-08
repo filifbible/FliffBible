@@ -16,11 +16,15 @@ import RankingView from './components/RankingView';
 import { generateDailyDevotional } from './services/geminiService';
 import { PROFILE_CONFIGS, SHOP_ITEMS } from './constants';
 import { Database } from './services/database';
+import { AuthService } from './services/authService';
+import { ProfileService } from './services/profileService';
+import { AccountService } from './services/accountService';
 
 const INITIAL_STATE: UserState = {
   email: null,
   isAuthenticated: false,
   isPremium: false,
+  userType: null,
   theme: 'light',
   profiles: [],
   currentProfileId: null
@@ -39,6 +43,84 @@ const App: React.FC = () => {
   const [devotional, setDevotional] = useState<any>(null);
   const [loadingDevotional, setLoadingDevotional] = useState(false);
   const [paintingMode, setPaintingMode] = useState<'SELECTION' | 'PHYSICAL'>('SELECTION');
+
+  // Verificar sessão do Supabase e carregar perfis ao inicializar
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const session = await AuthService.getCurrentSession();
+        
+        if (session?.user) {
+          // Usuário autenticado via Supabase
+          console.log('✅ Sessão Supabase ativa');
+          
+          // Carregar dados da conta
+          const accountData = await AccountService.getAccount(session.user.id);
+          
+          // Carregar perfis do Supabase
+          const supabaseProfiles = await ProfileService.getProfiles(session.user.id);
+          
+          // Converter perfis do Supabase para formato local
+          const profiles: ProfileData[] = supabaseProfiles.map(sp => ({
+            id: sp.id,
+            name: sp.name,
+            type: sp.profile_type,
+            avatar: sp.avatar || undefined,
+            bio: sp.bio || undefined,
+            points: sp.points,
+            coins: sp.coins,
+            unlockedItems: sp.unlocked_items,
+            streak: sp.streak,
+            lastChallengeDate: sp.last_challenge_date,
+            lastArtDate: sp.last_art_date,
+            lastVideoDate: sp.last_video_date,
+            favorites: sp.favorites,
+            gallery: sp.gallery,
+            recordings: sp.recordings,
+            paintings: sp.paintings,
+            artMissionTheme: sp.art_mission_theme || undefined,
+          }));
+          
+          // Obter dados do localStorage para mesclar
+          const localData = Database.getUserData(session.user.email!);
+          
+          const newUserState: UserState = {
+            email: session.user.email!,
+            isAuthenticated: true,
+            isPremium: accountData?.is_premium || false,
+            userType: null, // user_type agora é por perfil, não por conta
+            theme: accountData?.theme || localData?.theme || 'light',
+            profiles: profiles.length > 0 ? profiles : (localData?.profiles || []),
+            currentProfileId: localData?.currentProfileId || null,
+          };
+          
+          setUser(newUserState);
+          Database.saveUserData(newUserState);
+          setScreen(newUserState.currentProfileId ? 'HOME' : 'PICKER');
+          
+          console.log(`✅ Carregados ${profiles.length} perfis do Supabase`);
+        } else {
+          // Fallback para localStorage (usuários antigos ou offline)
+          const lastSession = Database.getLastSession();
+          if (lastSession) {
+            setUser({ ...lastSession, userType: null });
+            setScreen(lastSession.currentProfileId ? 'HOME' : 'PICKER');
+            console.log('📦 Usando dados do localStorage');
+          }
+        }
+      } catch (error) {
+        console.error('⚠️ Erro ao inicializar autenticação:', error);
+        // Em caso de erro, tentar localStorage
+        const lastSession = Database.getLastSession();
+        if (lastSession) {
+          setUser({ ...lastSession, userType: null });
+          setScreen(lastSession.currentProfileId ? 'HOME' : 'PICKER');
+        }
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   useEffect(() => {
     if (user.theme === 'dark') {
@@ -73,11 +155,66 @@ const App: React.FC = () => {
     }
   }, [screen, currentProfile?.type, devotional, user.isAuthenticated]);
 
-  const handleAuthComplete = (email: string) => {
-    const data = Database.getUserData(email);
-    if (data) {
-      setUser(data);
-      setScreen(data.currentProfileId ? 'HOME' : 'PICKER');
+  const handleAuthComplete = async (email: string) => {
+    try {
+      // Tentar obter sessão do Supabase
+      const session = await AuthService.getCurrentSession();
+      
+      if (session?.user) {
+        // Carregar dados da conta e perfis do Supabase
+        const accountData = await AccountService.getAccount(session.user.id);
+        const supabaseProfiles = await ProfileService.getProfiles(session.user.id);
+        
+        // Converter perfis
+        const profiles: ProfileData[] = supabaseProfiles.map(sp => ({
+          id: sp.id,
+          name: sp.name,
+          type: sp.profile_type,
+          avatar: sp.avatar || undefined,
+          bio: sp.bio || undefined,
+          points: sp.points,
+          coins: sp.coins,
+          unlockedItems: sp.unlocked_items,
+          streak: sp.streak,
+          lastChallengeDate: sp.last_challenge_date,
+          lastArtDate: sp.last_art_date,
+          lastVideoDate: sp.last_video_date,
+          favorites: sp.favorites,
+          gallery: sp.gallery,
+          recordings: sp.recordings,
+          paintings: sp.paintings,
+          artMissionTheme: sp.art_mission_theme || undefined,
+        }));
+        
+        const newUserState: UserState = {
+          email,
+          isAuthenticated: true,
+          isPremium: accountData?.is_premium || false,
+          userType: null,
+          theme: accountData?.theme || 'light',
+          profiles: profiles,
+          currentProfileId: null,
+        };
+        
+        setUser(newUserState);
+        Database.saveUserData(newUserState);
+        setScreen('PICKER');
+      } else {
+        // Fallback para localStorage
+        const data = Database.getUserData(email);
+        if (data) {
+          setUser({ ...data, userType: null });
+          setScreen(data.currentProfileId ? 'HOME' : 'PICKER');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao completar autenticação:', error);
+      // Fallback para dados do localStorage
+      const data = Database.getUserData(email);
+      if (data) {
+        setUser({ ...data, userType: null });
+        setScreen(data.currentProfileId ? 'HOME' : 'PICKER');
+      }
     }
   };
 
@@ -246,7 +383,12 @@ const App: React.FC = () => {
     }));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await AuthService.logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout do Supabase:', error);
+    }
     Database.clearSession();
     setUser(INITIAL_STATE);
     setScreen('AUTH');

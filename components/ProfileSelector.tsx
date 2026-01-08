@@ -1,7 +1,10 @@
 
+
 import React, { useState } from 'react';
-import { ProfileType, ProfileData } from '../types';
+import { ProfileType, ProfileData, UserType } from '../types';
 import { PROFILE_CONFIGS, AVATAR_OPTIONS, SHOP_AVATARS } from '../constants';
+import { AuthService } from '../services/authService';
+import { ProfileService } from '../services/profileService';
 
 interface ProfileSelectorProps {
   profiles: ProfileData[];
@@ -39,7 +42,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
     return list;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -56,7 +59,26 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
         setError('⚠️ Limite de 4 perfis atingido.');
         return;
       }
+      
+      // Criar perfil localmente primeiro
       onCreate(newName.trim(), newType, selectedAvatar);
+      
+      // Criar perfil no Supabase
+      try {
+        const session = await AuthService.getCurrentSession();
+        if (session?.user) {
+          await ProfileService.createProfile(
+            session.user.id,
+            newName.trim(),
+            newType,
+            selectedAvatar
+          );
+          console.log(`✅ Perfil criado no Supabase: ${newName} (${newType})`);
+        }
+      } catch (error) {
+        console.error('Erro ao criar perfil no Supabase:', error);
+        // Não bloqueia a criação do perfil mesmo se falhar (fallback para localStorage)
+      }
     }
     
     setNewName('');
