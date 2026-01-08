@@ -6,6 +6,11 @@ export enum ProfileType {
   ADULTS = 'ADULTS'
 }
 
+export enum UserType {
+  ADULT = 'adult',
+  CHILD = 'child'
+}
+
 export interface AudioRecording {
   id: string;
   ref: string;
@@ -51,6 +56,7 @@ export interface UserState {
   email: string | null;
   isAuthenticated: boolean;
   isPremium: boolean;
+  userType: UserType | null;
   theme: 'light' | 'dark';
   profiles: ProfileData[];
   currentProfileId: string | null;

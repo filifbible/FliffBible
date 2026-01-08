@@ -1,6 +1,8 @@
 
+
 import React, { useState } from 'react';
 import { Database } from '../services/database';
+import { AuthService } from '../services/authService';
 
 interface AuthScreenProps {
   onAuthComplete: (email: string) => void;
@@ -10,6 +12,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,39 +27,66 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
     setLoading(true);
     setError('');
 
-    if (isRegistering) {
-      const { minLength, hasSpecialChar } = validatePassword(password);
-      if (!minLength) {
-        setError('A senha precisa ter no mínimo 5 letras.');
-        setLoading(false);
-        return;
-      }
-      if (!hasSpecialChar) {
-        setError('A senha precisa ter pelo menos um caractere especial (ex: @, #, $).');
-        setLoading(false);
-        return;
-      }
-    }
-
     const cleanEmail = email.toLowerCase().trim();
-    await new Promise(r => setTimeout(r, 600));
 
-    if (isRegistering) {
-      const success = await Database.register(cleanEmail, password);
-      if (success) {
-        onAuthComplete(cleanEmail);
+    try {
+      if (isRegistering) {
+        // Validações de senha
+        const { minLength, hasSpecialChar } = validatePassword(password);
+        if (!minLength) {
+          setError('A senha precisa ter no mínimo 5 letras.');
+          setLoading(false);
+          return;
+        }
+        if (!hasSpecialChar) {
+          setError('A senha precisa ter pelo menos um caractere especial (ex: @, #, $).');
+          setLoading(false);
+          return;
+        }
+
+        // Tentar registrar com Supabase (sem user_type, será definido ao criar perfil)
+        try {
+          await AuthService.register(
+            cleanEmail,
+            password,
+            null, // user_type será definido ao criar o primeiro perfil
+            fullName || undefined
+          );
+          onAuthComplete(cleanEmail);
+        } catch (supabaseError: any) {
+          // Fallback para localStorage se Supabase falhar
+          console.warn('Supabase registration failed, using localStorage:', supabaseError.message);
+          await new Promise(r => setTimeout(r, 600));
+          const success = await Database.register(cleanEmail, password);
+          if (success) {
+            onAuthComplete(cleanEmail);
+          } else {
+            setError('Este e-mail já está registrado.');
+            setLoading(false);
+          }
+        }
       } else {
-        setError('Este e-mail já está registrado.');
-        setLoading(false);
+        // Login - tentar Supabase primeiro
+        try {
+          await AuthService.login(cleanEmail, password);
+          onAuthComplete(cleanEmail);
+        } catch (supabaseError: any) {
+          // Fallback para localStorage se Supabase falhar
+          console.warn('Supabase login failed, using localStorage:', supabaseError.message);
+          await new Promise(r => setTimeout(r, 600));
+          const isValid = await Database.login(cleanEmail, password);
+          if (isValid) {
+            onAuthComplete(cleanEmail);
+          } else {
+            setError('E-mail ou senha incorretos.');
+            setLoading(false);
+          }
+        }
       }
-    } else {
-      const isValid = await Database.login(cleanEmail, password);
-      if (isValid) {
-        onAuthComplete(cleanEmail);
-      } else {
-        setError('E-mail ou senha incorretos.');
-        setLoading(false);
-      }
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      setError('Erro ao processar sua solicitação. Tente novamente.');
+      setLoading(false);
     }
   };
 
@@ -94,6 +124,21 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
               className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 text-gray-800 dark:text-white focus:bg-white dark:focus:bg-gray-700 transition-all outline-none"
             />
           </div>
+
+          {isRegistering && (
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 ml-1">
+                Nome Completo (Opcional)
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Seu nome completo"
+                className="w-full bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 text-gray-800 dark:text-white focus:bg-white dark:focus:bg-gray-700 transition-all outline-none"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 ml-1">Senha</label>
