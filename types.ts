@@ -43,13 +43,15 @@ export interface ProfileData {
   unlockedItems: string[];
   streak: number;
   lastChallengeDate: string | null;
-  lastArtDate: string | null; 
+  lastArtDate: string | null;
   lastVideoDate?: string | null;
   favorites: string[];
-  gallery?: string[]; 
+  gallery?: string[];
   recordings?: AudioRecording[];
   paintings?: string[];
   artMissionTheme?: ArtMissionTheme;
+  is_admin?: boolean;
+  is_blocked?: boolean;
 }
 
 export interface UserState {
@@ -81,4 +83,10 @@ export interface QuizQuestion {
   correctIndex: number;
 }
 
-export type AppScreen = 'AUTH' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING';
+export type AppScreen = 'AUTH' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL';
+
+export interface ShopItemOverride {
+  id: string;
+  price: number;
+}
+

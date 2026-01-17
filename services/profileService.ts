@@ -23,6 +23,8 @@ export interface ProfileData {
   art_mission_theme: ArtMissionTheme | null;
   created_at: string;
   updated_at: string;
+  is_admin?: boolean;
+  is_blocked?: boolean;
 }
 
 export const ProfileService = {
@@ -87,6 +89,14 @@ export const ProfileService = {
 
     if (error) {
       console.error('Erro ao buscar perfis:', error);
+
+      // Detectar erro de recursão infinita (Infinite Recursion)
+      if (error.code === '42P17') {
+        console.error('🚨 ERRO CRÍTICO DE RLS: Recursão infinita detectada nas políticas de segurança.');
+        console.error('👉 IMPORTANTE: Execute o script "fix_rls_error.sql" no SQL Editor do Supabase para corrigir.');
+        alert('Erro de configuração no banco de dados. Por favor, contate o suporte. (Erro 42P17: RLS Recursion)');
+      }
+
       return [];
     }
 
@@ -274,6 +284,44 @@ export const ProfileService = {
 
     if (error) {
       console.error('Erro ao deletar perfil:', error);
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * ADMIN: Obtém TODOS os perfis do banco (apenas para admins)
+   */
+  async getAllAllProfiles(): Promise<ProfileData[]> {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar todos os perfis:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  /**
+   * ADMIN: Atualiza status de bloqueio ou admin de um perfil
+   */
+  async updateProfileStatus(profileId: string, updates: { is_blocked?: boolean, is_admin?: boolean }): Promise<boolean> {
+    if (!supabase) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', profileId);
+
+    if (error) {
+      console.error('Erro ao atualizar status do perfil:', error);
       return false;
     }
 
