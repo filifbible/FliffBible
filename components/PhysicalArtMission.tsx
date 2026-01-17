@@ -10,9 +10,10 @@ interface PhysicalArtMissionProps {
   savedTheme?: ArtMissionTheme;
   onThemeGenerated: (theme: ArtMissionTheme) => void;
   isCompleted: boolean;
+  onHome: () => void;
 }
 
-const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCancel, savedTheme, onThemeGenerated, isCompleted }) => {
+const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCancel, savedTheme, onThemeGenerated, isCompleted, onHome }) => {
   const [theme, setTheme] = useState<ArtMissionTheme | null>(savedTheme || null);
   const [loading, setLoading] = useState(!savedTheme);
   const [showCamera, setShowCamera] = useState(false);
@@ -33,7 +34,7 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
       try {
         const prompt = `Gere um tema criativo de desenho bíblico para crianças. 
         Retorne JSON: { "title": "O que desenhar", "instruction": "Como desenhar (curto)", "icon": "Emoji" }.`;
-        
+
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
           contents: prompt,
@@ -50,7 +51,7 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
             }
           }
         });
-        
+
         const generated = JSON.parse(response.text);
         const newTheme: ArtMissionTheme = { ...generated, date: today };
         setTheme(newTheme);
@@ -94,8 +95,8 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
           <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-10">
             Você já registrou sua arte de hoje! Sua obra prima está guardada na galeria. Volte amanhã para um novo desafio!
           </p>
-          <button 
-            onClick={onCancel}
+          <button
+            onClick={onHome}
             className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-xl"
           >
             Voltar ao Início
@@ -109,9 +110,9 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
     return (
       <div className="p-4 md:p-8 max-w-xl mx-auto">
         <h2 className="text-2xl font-black text-center text-gray-800 dark:text-white mb-6 font-outfit">Registre sua Obra 📸</h2>
-        <PhotoCapture 
-          onCapture={onSave} 
-          onCancel={() => setShowCamera(false)} 
+        <PhotoCapture
+          onCapture={onSave}
+          onCancel={() => setShowCamera(false)}
         />
       </div>
     );
@@ -121,19 +122,19 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
     <div className="p-4 md:p-8 max-w-2xl mx-auto mb-20 animate-in zoom-in-95 duration-500">
       <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 shadow-2xl border-4 border-pink-50 dark:border-gray-700 text-center relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink-50 dark:bg-pink-900/10 rounded-full blur-3xl"></div>
-        
+
         <div className="text-8xl mb-6 transform hover:rotate-12 transition-transform cursor-default">
           {theme?.icon}
         </div>
-        
+
         <span className="bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest">
           Missão Criativa de Hoje
         </span>
-        
+
         <h2 className="text-4xl font-black font-outfit text-gray-800 dark:text-white mt-6 mb-4">
           {theme?.title}
         </h2>
-        
+
         <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-10">
           {theme?.instruction}
         </p>
@@ -145,13 +146,13 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <button 
+          <button
             onClick={onCancel}
             className="flex-1 py-5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded-2xl font-bold transition-all"
           >
             Voltar
           </button>
-          <button 
+          <button
             onClick={() => setShowCamera(true)}
             className="flex-[2] py-5 bg-pink-500 text-white font-black rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-xl flex items-center justify-center space-x-3"
           >
@@ -159,7 +160,7 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
           </button>
         </div>
       </div>
-      
+
       <p className="text-center text-gray-400 mt-8 text-xs font-medium">
         Lembre-se: Deus ama a sua criatividade! ✨
       </p>

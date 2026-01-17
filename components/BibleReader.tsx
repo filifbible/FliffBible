@@ -6,9 +6,10 @@ import BibleSupabaseService, { BibleBook, Verse } from '../services/bibleSupabas
 interface BibleReaderProps {
   onFavorite: (ref: string) => void;
   favorites: string[];
+  onBack: () => void;
 }
 
-const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
+const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites, onBack }) => {
   const [books, setBooks] = useState<BibleBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
@@ -85,12 +86,19 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
           </h2>
           <p className="text-indigo-400 dark:text-indigo-300 font-medium">A Palavra de Deus alimenta a nossa alma. ✨</p>
         </div>
-        {selectedBook && (
-          <button 
-            onClick={selectedChapter ? () => {setSelectedChapter(null); setChapterVerses([]);} : reset}
+        {selectedBook ? (
+          <button
+            onClick={selectedChapter ? () => { setSelectedChapter(null); setChapterVerses([]); } : reset}
             className="self-start md:self-center bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-black px-6 py-3 rounded-2xl shadow-md border border-indigo-50 dark:border-gray-700 hover:scale-105 active:scale-95 transition-all"
           >
             ← Voltar
+          </button>
+        ) : (
+          <button
+            onClick={onBack}
+            className="self-start md:self-center bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-black px-6 py-3 rounded-2xl shadow-md border border-indigo-50 dark:border-gray-700 hover:scale-105 active:scale-95 transition-all"
+          >
+            ← Início
           </button>
         )}
       </div>
@@ -102,13 +110,13 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
             <div className="flex flex-col md:flex-row gap-6">
               {/* Seletor de Testamento */}
               <div className="flex bg-indigo-50 dark:bg-gray-900 p-2 rounded-2xl md:w-80">
-                <button 
+                <button
                   onClick={() => setActiveTestament('Old')}
                   className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTestament === 'Old' ? 'bg-white dark:bg-gray-800 text-indigo-600 shadow-sm' : 'text-gray-400'}`}
                 >
                   Antigo
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTestament('New')}
                   className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTestament === 'New' ? 'bg-white dark:bg-gray-800 text-indigo-600 shadow-sm' : 'text-gray-400'}`}
                 >
@@ -164,7 +172,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
         <div className="bg-[#FFFDF9] dark:bg-gray-900 rounded-[3rem] p-8 md:p-14 shadow-xl border border-amber-100/30 dark:border-gray-800 space-y-8 relative overflow-hidden min-h-[500px]">
           {/* Decoração interna Ajustada: Quase invisível no modo escuro para não atrapalhar a leitura */}
           <div className="absolute -top-16 -right-16 text-[22rem] text-amber-500/5 dark:text-white-[0.02] dark:opacity-[0.02] pointer-events-none rotate-12 select-none z-0">📖</div>
-          
+
           {loading ? (
             <div className="py-32 flex flex-col items-center">
               <div className="w-12 h-12 border-4 border-indigo-50 dark:border-gray-700 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -182,7 +190,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
                         <span className="text-indigo-600 dark:text-indigo-400 font-black mr-4 text-sm select-none align-top italic opacity-80">{v.verse}</span>
                         {v.text}
                       </p>
-                      <button 
+                      <button
                         onClick={() => onFavorite(ref)}
                         className={`mt-4 inline-flex items-center text-[10px] font-black px-4 py-2 rounded-xl transition-all ${isFav ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 opacity-0 group-hover:opacity-100 border dark:border-gray-700'}`}
                       >
@@ -194,19 +202,19 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites }) => {
               </div>
 
               <div className="mt-20 pt-12 flex justify-center border-t border-amber-50 dark:border-gray-800">
-                 <button 
-                   onClick={() => {
-                     if (selectedChapter < selectedBook.chapters) {
-                       setSelectedChapter(selectedChapter + 1);
-                       window.scrollTo(0, 0);
-                     } else {
-                       reset();
-                     }
-                   }}
-                   className="bg-indigo-900 dark:bg-indigo-600 text-white font-black px-12 py-5 rounded-[2rem] shadow-2xl hover:scale-105 active:scale-95 transition-all text-lg uppercase tracking-widest"
-                 >
-                   {selectedChapter < selectedBook.chapters ? 'Próximo Capítulo ➜' : 'Finalizar Leitura'}
-                 </button>
+                <button
+                  onClick={() => {
+                    if (selectedChapter < selectedBook.chapters) {
+                      setSelectedChapter(selectedChapter + 1);
+                      window.scrollTo(0, 0);
+                    } else {
+                      reset();
+                    }
+                  }}
+                  className="bg-indigo-900 dark:bg-indigo-600 text-white font-black px-12 py-5 rounded-[2rem] shadow-2xl hover:scale-105 active:scale-95 transition-all text-lg uppercase tracking-widest"
+                >
+                  {selectedChapter < selectedBook.chapters ? 'Próximo Capítulo ➜' : 'Finalizar Leitura'}
+                </button>
               </div>
             </div>
           )}
