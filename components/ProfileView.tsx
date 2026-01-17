@@ -8,9 +8,10 @@ interface ProfileViewProps {
   onUpdateProfile: (id: string, name: string, avatar: string, bio?: string) => void;
   onSwitchProfile: () => void;
   onLogout: () => void;
+  onBack: () => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onSwitchProfile, onLogout }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onSwitchProfile, onLogout, onBack }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(profile.name);
   const [bio, setBio] = useState(profile.bio || '');
@@ -38,11 +39,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onS
         <div className="flex flex-col items-center text-center space-y-6">
           {/* Avatar Section */}
           <div className="relative group">
+            <button
+              onClick={onBack}
+              className="absolute -left-16 md:-left-32 top-1/2 -translate-y-1/2 p-3 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-md text-xl hover:scale-105 transition-transform hidden md:block"
+            >
+              ⬅️
+            </button>
             <div className={`w-32 h-32 md:w-48 md:h-48 rounded-[2.5rem] overflow-hidden shadow-2xl flex items-center justify-center text-7xl ${PROFILE_CONFIGS[profile.type].color} border-8 border-white dark:border-gray-700`}>
               {avatar || profile.avatar || PROFILE_CONFIGS[profile.type].icon}
             </div>
             {isEditing && (
-              <button 
+              <button
                 onClick={() => setShowAvatarPicker(!showAvatarPicker)}
                 className="absolute -bottom-2 -right-2 bg-indigo-600 text-white w-12 h-12 rounded-full border-4 border-white dark:border-gray-800 flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
               >
@@ -100,7 +107,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onS
                 <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
                   {profile.bio || "Nenhuma descrição adicionada ainda. Clique em editar para contar sua história!"}
                 </p>
-                <button 
+                <button
                   onClick={() => setIsEditing(true)}
                   className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest"
                 >
@@ -113,39 +120,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onS
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 pt-12 border-t border-gray-100 dark:border-gray-700">
-           <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
-              <span className="text-3xl mb-2 block">🪙</span>
-              <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.coins}</span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Moedas</span>
-           </div>
-           <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
-              <span className="text-3xl mb-2 block">⭐</span>
-              <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.points}</span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pontos</span>
-           </div>
-           <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
-              <span className="text-3xl mb-2 block">🔥</span>
-              <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.streak}</span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dias Seguindo</span>
-           </div>
-           <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
-              <span className="text-3xl mb-2 block">🖼️</span>
-              <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.gallery?.length || 0}</span>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Obras</span>
-           </div>
+          <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
+            <span className="text-3xl mb-2 block">🪙</span>
+            <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.coins}</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Moedas</span>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
+            <span className="text-3xl mb-2 block">⭐</span>
+            <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.points}</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pontos</span>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
+            <span className="text-3xl mb-2 block">🔥</span>
+            <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.streak}</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dias Seguindo</span>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl text-center">
+            <span className="text-3xl mb-2 block">🖼️</span>
+            <span className="text-xl font-black text-gray-800 dark:text-white block">{profile.gallery?.length || 0}</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Obras</span>
+          </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <button 
+        <button
           onClick={onSwitchProfile}
           className="w-full bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-black py-6 rounded-[2rem] border-4 border-indigo-50 dark:border-indigo-900/30 shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3"
         >
           <span>👥</span>
           <span>Trocar Perfil</span>
         </button>
-        
-        <button 
+
+        <button
           onClick={onLogout}
           className="w-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-black py-6 rounded-[2rem] border-4 border-red-100 dark:border-red-900/30 shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3"
         >
