@@ -187,4 +187,46 @@ export const AuthService = {
     const session = await this.getCurrentSession();
     return session !== null;
   },
+
+  /**
+   * Envia email de recuperação de senha
+   */
+  async resetPassword(email: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase não está configurado');
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: `${window.location.origin}/reset-password`, // URL de redirecionamento após clicar no link
+    });
+
+    if (error) {
+      console.error('❌ Erro ao enviar email de recuperação:', error);
+      throw error;
+    }
+
+    console.log('✅ Email de recuperação enviado para:', cleanEmail);
+  },
+
+  /**
+   * Atualiza a senha do usuário (usado após clicar no link de reset)
+   */
+  async updatePassword(newPassword: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase não está configurado');
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      console.error('❌ Erro ao atualizar senha:', error);
+      throw error;
+    }
+
+    console.log('✅ Senha atualizada com sucesso');
+  },
 };

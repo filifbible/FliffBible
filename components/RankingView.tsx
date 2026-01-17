@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProfileData } from '../types';
 import { PROFILE_CONFIGS, REWARD_LEVELS } from '../constants';
+import { ProfileService } from '../services/profileService';
+import { AuthService } from '../services/authService';
 
 interface RankingViewProps {
   profiles: ProfileData[];
@@ -9,7 +11,59 @@ interface RankingViewProps {
   onBack: () => void;
 }
 
-const RankingView: React.FC<RankingViewProps> = ({ profiles, currentProfileId, onBack }) => {
+const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, currentProfileId, onBack }) => {
+  const [profiles, setProfiles] = useState<ProfileData[]>(initialProfiles);
+  const [loading, setLoading] = useState(true);
+
+  // Buscar perfis frescos do Supabase
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      setLoading(true);
+      try {
+        const session = await AuthService.getCurrentSession();
+        if (session?.user) {
+          const supabaseProfiles = await ProfileService.getProfiles(session.user.id);
+          
+          // Converter para formato local
+          const formattedProfiles: ProfileData[] = supabaseProfiles.map(sp => ({
+            id: sp.id,
+            name: sp.name,
+            type: sp.profile_type,
+            avatar: sp.avatar || undefined,
+            bio: sp.bio || undefined,
+            points: sp.points,
+            coins: sp.coins,
+            unlockedItems: sp.unlocked_items,
+            streak: sp.streak,
+            lastChallengeDate: sp.last_challenge_date,
+            lastArtDate: sp.last_art_date,
+            lastVideoDate: sp.last_video_date,
+            favorites: sp.favorites,
+            gallery: sp.gallery,
+            recordings: sp.recordings,
+            paintings: sp.paintings,
+            artMissionTheme: sp.art_mission_theme || undefined,
+            is_admin: sp.is_admin,
+            is_blocked: sp.is_blocked,
+          }));
+          
+          setProfiles(formattedProfiles);
+        } else {
+          // Fallback para dados locais se não houver sessão
+          setProfiles(initialProfiles);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar perfis do ranking:', error);
+        // Em caso de erro, usar dados locais
+        setProfiles(initialProfiles);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, [initialProfiles]);
+
   const currentProfile = profiles.find(p => p.id === currentProfileId);
   const userPoints = currentProfile?.points || 0;
 
@@ -35,8 +89,18 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles, currentProfileId, o
         </button>
         <h2 className="text-4xl md:text-5xl font-black font-outfit text-indigo-900 dark:text-indigo-400">Jornada da Fé ✨</h2>
         <p className="text-gray-500 dark:text-gray-400 font-medium">Continue cumprindo missões para subir de nível e brilhar!</p>
+        
+        {/* Loading state */}
+        {loading && (
+          <div className="flex justify-center items-center gap-2 text-indigo-600 dark:text-indigo-400">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+            <span className="text-sm font-bold">Atualizando ranking...</span>
+          </div>
+        )}
 
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-[3rem] shadow-xl border-4 border-indigo-50 dark:border-gray-700 mt-8 relative overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-[3rem] shadow-xl border-4 border-indigo-50 dark:border-gray-700 mt-8 relative overflow-hidden"
+          style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}
+        >
           <div className="absolute top-0 right-0 p-8 text-9xl opacity-5 rotate-12">{currentLevelInfo.icon}</div>
           <div className="relative z-10 flex flex-col items-center">
             <span className="text-6xl mb-4">{currentLevelInfo.icon}</span>
