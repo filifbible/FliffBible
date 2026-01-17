@@ -159,12 +159,21 @@ const CatchGame: React.FC<CatchGameProps> = ({ onWin, onBack }) => {
           // Versículo completo
           nextWordIdxRef.current = 0;
           setNextWordIdx(0);
-          setCoinsEarned(c => c + 2);
           
-          if (scoreRef.current >= 150) {
-            setGameState('WON');
-            onWin(coinsEarned + 5);
-          } else {
+          // Atualizar moedas ganhas
+          setCoinsEarned(c => {
+            const newCoinsEarned = c + 2;
+            
+            if (scoreRef.current >= 150) {
+              setGameState('WON');
+              // Passar o total correto de moedas (incluindo o bônus de vitória)
+              onWin(newCoinsEarned + 5);
+            }
+            
+            return newCoinsEarned;
+          });
+          
+          if (scoreRef.current < 150) {
             // Próximo versículo aleatório
             setCurrentVerseIdx(prev => {
               let next = Math.floor(Math.random() * VERSES.length);

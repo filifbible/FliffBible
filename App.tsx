@@ -5,6 +5,7 @@ import Navigation from './components/Navigation';
 import ProfileSelector from './components/ProfileSelector';
 import BibleReader from './components/BibleReader';
 import AuthScreen from './components/AuthScreen';
+import ResetPasswordScreen from './components/ResetPasswordScreen';
 import VerseChallenges from './components/VerseChallenges';
 import Shop from './components/Shop';
 import GalleryView from './components/GalleryView';
@@ -49,6 +50,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // ✨ DETECTAR TOKEN DE RECOVERY NA URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const type = hashParams.get('type');
+        
+        if (type === 'recovery') {
+          // Usuário clicou no link de reset de senha do email
+          console.log('🔐 Token de recovery detectado - redirecionando para reset de senha');
+          setScreen('RESET_PASSWORD');
+          return; // Não continua com inicialização normal
+        }
+
         const session = await AuthService.getCurrentSession();
 
         if (session?.user) {
@@ -291,8 +303,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleVerseChallengeComplete = () => {
+  const handleVerseChallengeComplete = async () => {
     const today = new Date().toISOString().split('T')[0];
+    const profileId = user.currentProfileId;
+    
+    if (!profileId) return;
+
+    // Atualização otimista no estado local
     setUser(prev => ({
       ...prev,
       profiles: prev.profiles.map(p =>
@@ -301,12 +318,31 @@ const App: React.FC = () => {
           : p
       )
     }));
+
+    // Persistir no Supabase
+    try {
+      const profile = await ProfileService.getProfile(profileId);
+      if (profile) {
+        await ProfileService.updateProfile(profileId, {
+          coins: profile.coins + 1,
+          points: profile.points + 100,
+          last_challenge_date: today
+        });
+        console.log('✅ Moedas do Quiz salvas no Supabase');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar moedas do Quiz no Supabase:', error);
+    }
   };
 
-  const handleArtChallengeComplete = (imageUrl: string, isPhysical: boolean = false) => {
+  const handleArtChallengeComplete = async (imageUrl: string, isPhysical: boolean = false) => {
     const today = new Date().toISOString().split('T')[0];
     const isFirstToday = currentProfile?.lastArtDate !== today;
+    const profileId = user.currentProfileId;
 
+    if (!profileId) return;
+
+    // Atualização otimista no estado local
     setUser(prev => ({
       ...prev,
       profiles: prev.profiles.map(p => {
@@ -326,7 +362,33 @@ const App: React.FC = () => {
         return p;
       })
     }));
-    // setScreen('HOME');
+
+    // Persistir no Supabase
+    try {
+      const profile = await ProfileService.getProfile(profileId);
+      if (profile) {
+        const newGallery = [...(profile.gallery || []), imageUrl];
+        
+        if (isPhysical && isFirstToday) {
+          // Desenho físico no primeiro envio do dia - ganha moedas
+          await ProfileService.updateProfile(profileId, {
+            coins: profile.coins + 1,
+            points: profile.points + 100,
+            last_art_date: today,
+            gallery: newGallery
+          });
+          console.log('✅ Moedas da Missão de Arte salvas no Supabase');
+        } else {
+          // Apenas adiciona à galeria sem moedas
+          await ProfileService.updateProfile(profileId, {
+            gallery: newGallery
+          });
+          console.log('✅ Arte adicionada à galeria no Supabase');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar arte no Supabase:', error);
+    }
   };
 
   const handleArtMissionThemeGenerated = (theme: ArtMissionTheme) => {
@@ -338,7 +400,12 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleGameWin = (reward: number) => {
+  const handleGameWin = async (reward: number) => {
+    const profileId = user.currentProfileId;
+    
+    if (!profileId) return;
+
+    // Atualização otimista no estado local
     setUser(prev => ({
       ...prev,
       profiles: prev.profiles.map(p =>
@@ -347,6 +414,20 @@ const App: React.FC = () => {
           : p
       )
     }));
+
+    // Persistir no Supabase
+    try {
+      const profile = await ProfileService.getProfile(profileId);
+      if (profile) {
+        await ProfileService.updateProfile(profileId, {
+          coins: profile.coins + reward,
+          points: profile.points + (reward * 20)
+        });
+        console.log(`✅ ${reward} moedas do Jogo salvas no Supabase`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar moedas do Jogo no Supabase:', error);
+    }
   };
 
   const handleBuyItem = async (item: typeof SHOP_ITEMS[0]) => {
@@ -446,6 +527,11 @@ const App: React.FC = () => {
   const isArtDone = currentProfile?.lastArtDate === todayStr;
 
   const renderScreen = () => {
+    // Tela de reset de senha (não requer autenticação)
+    if (screen === 'RESET_PASSWORD') {
+      return <ResetPasswordScreen onComplete={() => setScreen('AUTH')} />;
+    }
+
     if (!user.isAuthenticated) return <AuthScreen onAuthComplete={handleAuthComplete} />;
     if (screen === 'PICKER' || !currentProfile) return <ProfileSelector profiles={user.profiles} onSelect={handleProfileSelect} onCreate={handleProfileCreate} onUpdate={handleProfileUpdate} onLogout={logout} unlockedItems={currentProfile?.unlockedItems} />;
 
