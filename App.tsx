@@ -15,6 +15,7 @@ import BibleGame from './components/BibleGame';
 import ProfileView from './components/ProfileView';
 import RankingView from './components/RankingView';
 import AdminPanel from './components/AdminPanel';
+import LandingPage from './components/LandingPage';
 import { generateDailyDevotional } from './services/geminiService';
 import { PROFILE_CONFIGS, SHOP_ITEMS } from './constants';
 import { Database } from './services/database';
@@ -39,7 +40,7 @@ const App: React.FC = () => {
 
   const [screen, setScreen] = useState<AppScreen>(() => {
     const session = Database.getLastSession();
-    return session && session.isAuthenticated ? (session.currentProfileId ? 'HOME' : 'PICKER') : 'AUTH';
+    return session && session.isAuthenticated ? (session.currentProfileId ? 'HOME' : 'PICKER') : 'LANDING';
   });
 
   const [devotional, setDevotional] = useState<any>(null);
@@ -53,7 +54,7 @@ const App: React.FC = () => {
         // ✨ DETECTAR TOKEN DE RECOVERY NA URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const type = hashParams.get('type');
-        
+
         if (type === 'recovery') {
           // Usuário clicou no link de reset de senha do email
           console.log('🔐 Token de recovery detectado - redirecionando para reset de senha');
@@ -306,7 +307,7 @@ const App: React.FC = () => {
   const handleVerseChallengeComplete = async () => {
     const today = new Date().toISOString().split('T')[0];
     const profileId = user.currentProfileId;
-    
+
     if (!profileId) return;
 
     // Atualização otimista no estado local
@@ -368,7 +369,7 @@ const App: React.FC = () => {
       const profile = await ProfileService.getProfile(profileId);
       if (profile) {
         const newGallery = [...(profile.gallery || []), imageUrl];
-        
+
         if (isPhysical && isFirstToday) {
           // Desenho físico no primeiro envio do dia - ganha moedas
           await ProfileService.updateProfile(profileId, {
@@ -402,7 +403,7 @@ const App: React.FC = () => {
 
   const handleGameWin = async (reward: number) => {
     const profileId = user.currentProfileId;
-    
+
     if (!profileId) return;
 
     // Atualização otimista no estado local
@@ -518,7 +519,7 @@ const App: React.FC = () => {
     }
     Database.clearSession();
     setUser(INITIAL_STATE);
-    setScreen('AUTH');
+    setScreen('LANDING');
     setDevotional(null);
   };
 
@@ -527,9 +528,12 @@ const App: React.FC = () => {
   const isArtDone = currentProfile?.lastArtDate === todayStr;
 
   const renderScreen = () => {
-    // Tela de reset de senha (não requer autenticação)
     if (screen === 'RESET_PASSWORD') {
       return <ResetPasswordScreen onComplete={() => setScreen('AUTH')} />;
+    }
+
+    if (screen === 'LANDING') {
+      return <LandingPage onLogin={() => setScreen('AUTH')} theme={user.theme} onToggleTheme={toggleTheme} />;
     }
 
     if (!user.isAuthenticated) return <AuthScreen onAuthComplete={handleAuthComplete} />;

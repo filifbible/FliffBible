@@ -23,6 +23,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -33,6 +34,7 @@
     transform: translateY(10px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -47,6 +49,15 @@
   animation: fade-in 0.5s ease-out;
 }
 
-.slide-in-from-bottom-2 {
-  animation: slide-in-from-bottom 0.5s ease-out;
+
+@layer utilities {
+  .bg-blob-indigo {
+    @apply absolute w-[500px] h-[500px] bg-indigo-500/20 dark:bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply dark:mix-blend-screen animate-pulse;
+    animation-duration: 7s;
+  }
+
+  .bg-blob-pink {
+    @apply absolute w-[400px] h-[400px] bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-3xl mix-blend-multiply dark:mix-blend-screen animate-pulse;
+    animation-duration: 10s;
+  }
 }

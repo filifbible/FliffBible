@@ -88,7 +88,7 @@ const CatchGame: React.FC<CatchGameProps> = ({ onWin, onBack }) => {
       content,
       x: Math.random() * 85 + 7.5,
       y: -5,
-      speed: 0.6 + (scoreRef.current * 0.005) + (Math.random() * 0.4),
+      speed: 0.15 + (scoreRef.current * 0.005) + (Math.random() * 0.15),
       type
     };
 
