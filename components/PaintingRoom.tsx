@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import PhysicalArtMission from './PhysicalArtMission';
+import HomeButton from './HomeButton';
 import { ArtMissionTheme } from '../types';
 
 interface PaintingRoomProps {
@@ -179,12 +180,10 @@ const PaintingRoom: React.FC<PaintingRoomProps> = ({
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto mb-24 animate-in fade-in duration-500">
       <div className="text-center mb-8 relative">
-        <button
+        <HomeButton
           onClick={onBack}
-          className="absolute left-0 top-1/2 -translate-y-1/2 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-md text-xl hover:scale-105 transition-transform hidden md:block"
-        >
-          ⬅️
-        </button>
+          className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex"
+        />
         <h2 className="text-3xl md:text-5xl font-black font-outfit text-indigo-900 dark:text-indigo-400">Ateliê FiliF 🎨</h2>
       </div>
 

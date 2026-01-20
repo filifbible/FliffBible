@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
+import HomeButton from './HomeButton';
 
 interface VerseChallengesProps {
   onComplete: () => void;
@@ -113,12 +114,11 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
         <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-black p-6 rounded-2xl border-2 border-emerald-100 dark:border-emerald-800 mb-6">
           MOEDA COLETADA ✅
         </div>
-        <button
+        <HomeButton
           onClick={onBack}
-          className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all text-xl"
-        >
-          Voltar ao Início
-        </button>
+          label="Voltar ao Início"
+          className="w-full justify-center bg-indigo-600 text-white font-black hover:bg-indigo-700 shadow-xl"
+        />
       </div>
     );
   }
@@ -137,8 +137,8 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
                 key={idx}
                 onClick={() => setSelectedOption(idx)}
                 className={`w-full p-5 rounded-2xl font-bold transition-all border-4 relative overflow-hidden ${selectedOption === idx
-                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600'
-                    : 'border-gray-50 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-400'
+                  ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600'
+                  : 'border-gray-50 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-400'
                   }`}
               >
                 {opt}
@@ -166,12 +166,10 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto mb-20 animate-in zoom-in-95 duration-500">
       <div className="text-center mb-10 relative">
-        <button
+        <HomeButton
           onClick={onBack}
-          className="absolute left-0 top-1/2 -translate-y-1/2 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-md text-xl hover:scale-105 transition-transform"
-        >
-          ⬅️
-        </button>
+          className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex"
+        />
         <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em]">
           Missão de Leitura
         </span>
