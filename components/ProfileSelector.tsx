@@ -59,10 +59,10 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
         setError('⚠️ Limite de 4 perfis atingido.');
         return;
       }
-      
+
       // Criar perfil localmente primeiro
       onCreate(newName.trim(), newType, selectedAvatar);
-      
+
       // Criar perfil no Supabase
       try {
         const session = await AuthService.getCurrentSession();
@@ -80,7 +80,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
         // Não bloqueia a criação do perfil mesmo se falhar (fallback para localStorage)
       }
     }
-    
+
     setNewName('');
     setShowAddForm(false);
   };
@@ -97,18 +97,18 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
 
   if (showAddForm) {
     const availableAvatars = getAvailableAvatars();
-    
+
     return (
       <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center p-6 text-gray-800 dark:text-white animate-in zoom-in-95 duration-300">
         <div className="w-full max-w-2xl bg-gray-50 dark:bg-gray-900 p-8 md:p-12 rounded-[3rem] shadow-2xl border border-gray-100 dark:border-gray-800">
           <h1 className="text-3xl font-bold mb-8 font-outfit text-center">
             {editingProfile ? 'Editar Perfil' : 'Novo Perfil'}
           </h1>
-          
+
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="flex flex-col items-center space-y-6">
               <div className="relative">
-                <div 
+                <div
                   className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-indigo-500 shadow-xl overflow-hidden flex items-center justify-center bg-white dark:bg-gray-800 relative group`}
                 >
                   <span className="text-6xl md:text-7xl">{selectedAvatar}</span>
@@ -118,7 +118,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
               <div className="flex flex-col items-center">
                 <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-tighter">Escolha seu avatar</p>
               </div>
-              
+
               <div className="w-full max-h-48 overflow-y-auto no-scrollbar p-2">
                 <div className="flex flex-wrap justify-center gap-3">
                   {availableAvatars.map((emoji, i) => (
@@ -171,36 +171,65 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
-      <h1 className="text-4xl md:text-6xl font-black mb-12 font-outfit text-center">Quem está estudando hoje?</h1>
-      <div className="flex flex-wrap justify-center gap-8 md:gap-14">
-        {profiles.map((profile) => (
-          <div key={profile.id} className="relative group">
-            <button onClick={() => onSelect(profile.id)} className="flex flex-col items-center space-y-5">
-              <div className={`w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] flex items-center justify-center text-6xl md:text-8xl shadow-2xl transition-all border-8 border-transparent group-hover:border-indigo-500 overflow-hidden ${PROFILE_CONFIGS[profile.type].color}`}>
-                {profile.avatar}
+    <div className="min-h-screen bg-white dark:bg-gray-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-700 relative overflow-hidden font-outfit">
+
+      {/* Background Blobs */}
+      <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 bg-blob-indigo"></div>
+      <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 bg-blob-pink"></div>
+
+      <div className="relative z-10 w-full max-w-5xl flex flex-col items-center">
+        <h1 className="text-4xl md:text-6xl font-black mb-16 text-indigo-900 dark:text-white text-center tracking-tight drop-shadow-sm">Quem está estudando hoje?</h1>
+
+        <div className="flex flex-wrap justify-center gap-8 md:gap-14">
+          {profiles.map((profile) => (
+            <div key={profile.id} className="relative group perspective-1000">
+              <button
+                onClick={() => onSelect(profile.id)}
+                className="flex flex-col items-center space-y-6 transform transition-all duration-300 hover:scale-105 active:scale-95"
+              >
+                <div className={`w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] flex items-center justify-center text-6xl md:text-8xl shadow-xl hover:shadow-2xl transition-all border-4 border-transparent group-hover:border-indigo-500/50 overflow-hidden ${PROFILE_CONFIGS[profile.type].color} relative`}>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent"></div>
+                  <span className="relative drop-shadow-md transform group-hover:scale-110 transition-transform duration-300">{profile.avatar}</span>
+                </div>
+                <span className="text-xl md:text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">{profile.name}</span>
+              </button>
+              <button
+                onClick={(e) => handleEdit(profile, e)}
+                className="absolute -top-2 -right-2 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-110 border border-gray-100 dark:border-gray-700"
+              >
+                ✏️
+              </button>
+            </div>
+          ))}
+
+          {!isLimitReached ? (
+            <button
+              onClick={() => { setEditingProfile(null); setNewName(''); setSelectedAvatar(AVATAR_OPTIONS[0]); setError(''); setShowAddForm(true); }}
+              className="group flex flex-col items-center space-y-6 transform transition-all duration-300 hover:scale-105 active:scale-95"
+            >
+              <div className="w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-4 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center text-5xl transition-all group-hover:border-indigo-500/50 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 text-gray-300 dark:text-gray-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                +
               </div>
-              <span className="text-lg md:text-2xl font-black group-hover:text-indigo-600 transition-colors">{profile.name}</span>
+              <span className="text-xl md:text-2xl font-bold text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">Novo Perfil</span>
             </button>
-            <button onClick={(e) => handleEdit(profile, e)} className="absolute top-2 right-2 bg-white/90 dark:bg-gray-800/90 text-indigo-600 p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">✏️</button>
-          </div>
-        ))}
-        
-        {!isLimitReached ? (
-          <button onClick={() => { setEditingProfile(null); setNewName(''); setSelectedAvatar(AVATAR_OPTIONS[0]); setError(''); setShowAddForm(true); }} className="group flex flex-col items-center space-y-5">
-            <div className="w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] bg-gray-50 dark:bg-gray-900 border-4 border-dashed border-gray-200 flex items-center justify-center text-5xl transition-all group-hover:border-indigo-500 group-hover:bg-gray-100 text-gray-300 group-hover:text-indigo-600">+</div>
-            <span className="text-lg md:text-2xl font-black text-gray-400 group-hover:text-gray-600">Novo</span>
-          </button>
-        ) : (
-          <div className="flex flex-col items-center space-y-5 opacity-40 grayscale cursor-not-allowed">
-            <div className="w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] bg-gray-100 dark:bg-gray-800 border-4 border-dashed border-gray-300 flex items-center justify-center text-5xl">🔒</div>
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center max-w-[120px]">Limite de 4 perfis atingido</span>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col items-center space-y-6 opacity-50 grayscale cursor-not-allowed">
+              <div className="w-32 h-32 md:w-44 md:h-44 rounded-[2.5rem] bg-gray-100 dark:bg-gray-800 border-4 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center text-5xl">🔒</div>
+              <span className="text-xs font-black text-gray-400 uppercase tracking-widest text-center max-w-[120px]">Limite Atingido</span>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onLogout}
+          className="mt-24 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 font-bold text-xs uppercase tracking-widest bg-white/50 dark:bg-gray-900/50 px-8 py-3 rounded-full border border-gray-100 dark:border-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800/30 transition-all"
+        >
+          Sair da Conta
+        </button>
       </div>
-      <button onClick={onLogout} className="mt-20 text-gray-400 hover:text-red-500 font-black text-xs uppercase tracking-widest bg-gray-50 dark:bg-gray-900 px-10 py-4 rounded-full border">Sair da Conta</button>
     </div>
   );
 };
+
 
 export default ProfileSelector;

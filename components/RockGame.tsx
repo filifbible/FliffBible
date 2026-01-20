@@ -49,7 +49,7 @@ const RockGame: React.FC<{ onWin: (coins: number) => void; onBack: () => void }>
         // Balanço do bloco no topo
         if (!isDropping) {
           setSwingX(prev => {
-            const speed = 0.15 + (score * 0.02);
+            const speed = 0.25 + (score * 0.08);
             let next = prev + (swingDir * speed * deltaTime / 16);
             if (next > 80) { setSwingDir(-1); return 80; }
             if (next < 20) { setSwingDir(1); return 20; }

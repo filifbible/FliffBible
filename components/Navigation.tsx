@@ -35,31 +35,36 @@ const Navigation: React.FC<NavigationProps> = ({ currentScreen, profileType, unl
 
   return (
     <>
+
       {/* HEADER UNIVERSAL (MOBILE, TABLET, DESKTOP) */}
-      <div className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md h-16 flex items-center justify-between px-6 z-[70] border-b border-gray-100 dark:border-gray-800">
+      <div className="fixed top-0 left-0 right-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl h-20 flex items-center justify-between px-6 z-[70] border-b border-white/20 dark:border-gray-800 transition-all duration-300">
         <div className="flex items-center space-x-3">
-          <span className="text-2xl">📖</span>
-          <h1 className="text-xl font-black font-outfit text-indigo-900 dark:text-indigo-400">FiliF Bible+</h1>
+          <div className="w-10 h-10 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center text-2xl">
+            📖
+          </div>
+          <h1 className="text-xl font-black font-outfit text-indigo-900 dark:text-indigo-100 tracking-tight">FiliF Bible+</h1>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <button
             onClick={onToggleTheme}
-            className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-lg hover:scale-105 transition-transform"
+            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center text-lg hover:scale-110 transition-transform active:scale-95"
           >
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
+
           {isAdmin && (
             <button
               onClick={() => onNavigate('ADMIN_PANEL')}
-              className="p-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold uppercase tracking-widest hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 dark:shadow-none"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-rose-500/30 transition-all active:scale-95"
             >
               Painel
             </button>
           )}
+
           <button
             onClick={() => setIsMenuOpen(true)}
-            className="p-2.5 rounded-xl bg-indigo-600 text-white text-lg hover:bg-indigo-700 transition-colors"
+            className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all active:scale-95"
           >
             ☰
           </button>
@@ -67,22 +72,22 @@ const Navigation: React.FC<NavigationProps> = ({ currentScreen, profileType, unl
       </div>
 
       {/* BARRA INFERIOR MOBILE (APENAS MOBILE) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around items-center h-16 md:hidden z-[60]">
-        <button onClick={() => onNavigate('HOME')} className={`flex flex-col items-center flex-1 ${currentScreen === 'HOME' ? 'text-indigo-600' : 'text-gray-400'}`}>
-          <span className="text-xl">🏠</span>
-          <span className="text-[10px] font-bold">Início</span>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 flex justify-around items-center h-[4.5rem] md:hidden z-[60] pb-safe">
+        <button onClick={() => onNavigate('HOME')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-colors ${currentScreen === 'HOME' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+          <span className={`text-xl transition-transform ${currentScreen === 'HOME' ? 'scale-110' : ''}`}>🏠</span>
+          <span className="text-[10px] font-bold tracking-wide">Início</span>
         </button>
-        <button onClick={() => onNavigate('RANKING')} className={`flex flex-col items-center flex-1 ${currentScreen === 'RANKING' ? 'text-indigo-600' : 'text-gray-400'}`}>
-          <span className="text-xl">🏆</span>
-          <span className="text-[10px] font-bold">Ranking</span>
+        <button onClick={() => onNavigate('RANKING')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-colors ${currentScreen === 'RANKING' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+          <span className={`text-xl transition-transform ${currentScreen === 'RANKING' ? 'scale-110' : ''}`}>🏆</span>
+          <span className="text-[10px] font-bold tracking-wide">Ranking</span>
         </button>
-        <button onClick={() => onNavigate('BIBLE')} className={`flex flex-col items-center flex-1 ${currentScreen === 'BIBLE' ? 'text-indigo-600' : 'text-gray-400'}`}>
-          <span className="text-xl">📖</span>
-          <span className="text-[10px] font-bold">Bíblia</span>
+        <button onClick={() => onNavigate('BIBLE')} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-colors ${currentScreen === 'BIBLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+          <span className={`text-xl transition-transform ${currentScreen === 'BIBLE' ? 'scale-110' : ''}`}>📖</span>
+          <span className="text-[10px] font-bold tracking-wide">Bíblia</span>
         </button>
-        <button onClick={() => setIsMenuOpen(true)} className={`flex flex-col items-center flex-1 ${isMenuOpen ? 'text-indigo-600' : 'text-gray-400'}`}>
+        <button onClick={() => setIsMenuOpen(true)} className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-colors ${isMenuOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}>
           <span className="text-xl">☰</span>
-          <span className="text-[10px] font-bold">Menu</span>
+          <span className="text-[10px] font-bold tracking-wide">Menu</span>
         </button>
       </nav>
 
