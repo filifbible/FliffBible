@@ -83,7 +83,7 @@ export interface QuizQuestion {
   correctIndex: number;
 }
 
-export type AppScreen = 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL';
+export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL';
 
 export interface ShopItemOverride {
   id: string;

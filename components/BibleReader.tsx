@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import BibleSupabaseService, { BibleBook, Verse } from '../services/bibleSupabaseService';
+import HomeButton from './HomeButton';
 
 interface BibleReaderProps {
   onFavorite: (ref: string) => void;
@@ -94,12 +95,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites, onBack
             ← Voltar
           </button>
         ) : (
-          <button
-            onClick={onBack}
-            className="self-start md:self-center bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-black px-6 py-3 rounded-2xl shadow-md border border-indigo-50 dark:border-gray-700 hover:scale-105 active:scale-95 transition-all"
-          >
-            ← Início
-          </button>
+          <HomeButton onClick={onBack} className="self-start md:self-center" />
         )}
       </div>
 

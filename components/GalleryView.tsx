@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import HomeButton from './HomeButton';
 
 interface GalleryViewProps {
   images: string[];
@@ -12,12 +13,11 @@ const GalleryView: React.FC<GalleryViewProps> = ({ images, onBack }) => {
   if (!images || images.length === 0) {
     return (
       <div className="p-8 md:p-12 text-center max-w-2xl mx-auto">
-        <button
+        <HomeButton
           onClick={onBack}
-          className="mb-8 p-3 bg-gray-100 dark:bg-gray-800 rounded-xl font-black text-xs uppercase"
-        >
-          ⬅️ Voltar
-        </button>
+          label="Voltar"
+          className="mb-8"
+        />
         <div className="text-8xl mb-6">🖼️</div>
         <h2 className="text-3xl font-bold font-outfit text-gray-800 mb-4">Sua Galeria está vazia!</h2>
         <p className="text-gray-500 leading-relaxed">
@@ -30,12 +30,10 @@ const GalleryView: React.FC<GalleryViewProps> = ({ images, onBack }) => {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="mb-10 flex items-center gap-6">
-        <button
+        <HomeButton
           onClick={onBack}
-          className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-md text-xl hover:scale-105 transition-transform"
-        >
-          ⬅️
-        </button>
+          className="hidden md:flex"
+        />
         <div>
           <h2 className="text-3xl font-bold font-outfit text-gray-800">Minha Galeria de Fé</h2>
           <p className="text-gray-500">Toque em um desenho para vê-lo bem grande!</p>
