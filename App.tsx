@@ -16,6 +16,8 @@ import ProfileView from './components/ProfileView';
 import RankingView from './components/RankingView';
 import AdminPanel from './components/AdminPanel';
 import LandingPage from './components/LandingPage';
+import PremiumGateModal from './components/PremiumGateModal';
+import SubscriptionCheckout from './components/SubscriptionCheckout';
 import { generateDailyDevotional } from './services/geminiService';
 import { PROFILE_CONFIGS, SHOP_ITEMS } from './constants';
 import { Database } from './services/database';
@@ -25,13 +27,44 @@ import { AccountService } from './services/accountService';
 
 const INITIAL_STATE: UserState = {
   email: null,
+  authUserId: null,
   isAuthenticated: false,
   isPremium: false,
+  trialEndDate: null,
+  subscriptionStatus: null,
   userType: null,
   theme: 'light',
   profiles: [],
   currentProfileId: null
 };
+
+/**
+ * Determina se o usuário tem acesso aos conteúdos premium.
+ * Acesso liberado se: isPremium OU (trial ativo E não cancelado)
+ */
+function checkPremiumAccess(user: UserState): {
+  hasAccess: boolean;
+  reason?: 'no_plan' | 'trial_expired' | 'cancelled';
+} {
+  // Assinante premium ativo
+  if (user.isPremium) return { hasAccess: true };
+
+  // Assinatura cancelada ou pausada (mesmo que ainda em trial)
+  const cancelledStatuses = ['cancelled', 'paused', 'canceled'];
+  if (cancelledStatuses.includes((user.subscriptionStatus || '').toLowerCase())) {
+    return { hasAccess: false, reason: 'cancelled' };
+  }
+
+  // Verificar free trial
+  if (user.trialEndDate) {
+    const trialActive = new Date(user.trialEndDate) > new Date();
+    if (trialActive) return { hasAccess: true };
+    return { hasAccess: false, reason: 'trial_expired' };
+  }
+
+  // Sem plano e sem trial
+  return { hasAccess: false, reason: 'no_plan' };
+}
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserState>(() => {
@@ -102,9 +135,12 @@ const App: React.FC = () => {
 
           const newUserState: UserState = {
             email: session.user.email!,
+            authUserId: session.user.id,
             isAuthenticated: true,
             isPremium: accountData?.is_premium || false,
-            userType: null, // user_type agora é por perfil, não por conta
+            trialEndDate: accountData?.trial_end_date || null,
+            subscriptionStatus: accountData?.subscription_status || null,
+            userType: null,
             theme: accountData?.theme || localData?.theme || 'light',
             profiles: profiles.length > 0 ? profiles : (localData?.profiles || []),
             currentProfileId: localData?.currentProfileId || null,
@@ -217,8 +253,11 @@ const App: React.FC = () => {
 
         const newUserState: UserState = {
           email,
+          authUserId: session.user.id,
           isAuthenticated: true,
           isPremium: accountData?.is_premium || false,
+          trialEndDate: accountData?.trial_end_date || null,
+          subscriptionStatus: accountData?.subscription_status || null,
           userType: null,
           theme: accountData?.theme || 'light',
           profiles: profiles,
@@ -537,6 +576,22 @@ const App: React.FC = () => {
     }
 
     if (!user.isAuthenticated) return <AuthScreen onAuthComplete={handleAuthComplete} />;
+
+    // ── PROTEÇÃO DE ACESSO PREMIUM ──────────────────────────────────────────
+    // Telas que não precisam de plano ativo
+    const publicScreens: string[] = ['LANDING', 'AUTH', 'RESET_PASSWORD', 'SUBSCRIPTION'];
+    if (!publicScreens.includes(screen)) {
+      const access = checkPremiumAccess(user);
+      if (!access.hasAccess) {
+        return (
+          <PremiumGateModal
+            reason={access.reason!}
+            onGoToPlans={() => setScreen('SUBSCRIPTION')}
+          />
+        );
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
     if (screen === 'PICKER' || !currentProfile) return <ProfileSelector profiles={user.profiles} onSelect={handleProfileSelect} onCreate={handleProfileCreate} onUpdate={handleProfileUpdate} onLogout={logout} unlockedItems={currentProfile?.unlockedItems} />;
 
     switch (screen) {
@@ -693,6 +748,10 @@ const App: React.FC = () => {
                 <span className="text-4xl mb-3 group-hover:scale-110 transition-transform">🏆</span>
                 <span className="font-black text-xs uppercase tracking-widest text-gray-800 dark:text-white">Jornada</span>
               </button>
+              <button onClick={() => setScreen('SUBSCRIPTION')} className="flex-1 bg-white dark:bg-gray-800 p-8 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-lg flex flex-col items-center group hover:bg-purple-50 transition-all">
+                <span className="text-4xl mb-3 group-hover:scale-110 transition-transform">💎</span>
+                <span className="font-black text-xs uppercase tracking-widest text-gray-800 dark:text-white">Premium</span>
+              </button>
             </div>
           </div>
         );
@@ -706,6 +765,24 @@ const App: React.FC = () => {
       case 'RANKING': return <RankingView profiles={user.profiles} currentProfileId={user.currentProfileId} onBack={() => setScreen('HOME')} />;
       case 'GAMES': return <BibleGame onWin={handleGameWin} onBack={() => setScreen('HOME')} />;
       case 'ADMIN_PANEL': return <AdminPanel onBack={() => setScreen('HOME')} />;
+      case 'SUBSCRIPTION': return (
+        <SubscriptionCheckout 
+          userEmail={user.email!} 
+          userId={user.authUserId!}
+          onSuccess={(sub) => {
+            console.log('Assinatura realizada:', sub);
+            alert('Assinatura realizada com sucesso! Bem-vindo ao Premium.');
+            setUser(prev => ({
+              ...prev,
+              isPremium: true,
+              trialEndDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+              subscriptionStatus: 'authorized'
+            }));
+            setScreen('HOME');
+          }}
+          onError={(err) => alert(err)}
+        />
+      );
       default: return null;
     }
   };
