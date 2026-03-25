@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ALLOWED_ORIGINS = [
-  process.env.NEXT_PUBLIC_APP_URL ?? '',
-  'http://localhost:3000',
-];
-
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Apply CORS only to API routes
   if (pathname.startsWith('/api')) {
     const origin = req.headers.get('origin') ?? '';
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    const host   = req.headers.get('host')   ?? '';
+
+    // Allow same-origin requests (dynamically derived from the request host)
+    // and localhost for development
+    const allowedOrigins = [
+      `https://${host}`,
+      `http://${host}`,
+      'http://localhost:3000',
+    ];
+
+    if (origin && !allowedOrigins.includes(origin)) {
       return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
