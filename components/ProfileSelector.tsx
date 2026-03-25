@@ -1,10 +1,8 @@
 
 
 import React, { useState } from 'react';
-import { ProfileType, ProfileData, UserType } from '../types';
+import { ProfileType, ProfileData } from '../types';
 import { PROFILE_CONFIGS, AVATAR_OPTIONS, SHOP_AVATARS } from '../constants';
-import { AuthService } from '../services/authService';
-import { ProfileService } from '../services/profileService';
 
 interface ProfileSelectorProps {
   profiles: ProfileData[];
@@ -60,25 +58,8 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({ profiles, onSelect, o
         return;
       }
 
-      // Criar perfil localmente primeiro
+      // Delega a criação ao componente pai (que salva no Supabase e atualiza a lista)
       onCreate(newName.trim(), newType, selectedAvatar);
-
-      // Criar perfil no Supabase
-      try {
-        const session = await AuthService.getCurrentSession();
-        if (session?.user) {
-          await ProfileService.createProfile(
-            session.user.id,
-            newName.trim(),
-            newType,
-            selectedAvatar
-          );
-          console.log(`✅ Perfil criado no Supabase: ${newName} (${newType})`);
-        }
-      } catch (error) {
-        console.error('Erro ao criar perfil no Supabase:', error);
-        // Não bloqueia a criação do perfil mesmo se falhar (fallback para localStorage)
-      }
     }
 
     setNewName('');

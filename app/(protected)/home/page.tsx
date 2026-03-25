@@ -77,7 +77,10 @@ export default function HomePage() {
   return (
     <ProfileSelector
       profiles={profiles}
-      onSelect={(id) => router.push(`/profile/${id}`)}
+      onSelect={(id) => {
+        localStorage.setItem('selectedProfileId', id);
+        router.push('/dashboard');
+      }}
       onCreate={handleCreate}
       onUpdate={handleUpdate}
       onLogout={handleLogout}
