@@ -56,8 +56,11 @@ export interface ProfileData {
 
 export interface UserState {
   email: string | null;
+  authUserId: string | null;
   isAuthenticated: boolean;
   isPremium: boolean;
+  trialEndDate: string | null;
+  subscriptionStatus: string | null;
   userType: UserType | null;
   theme: 'light' | 'dark';
   profiles: ProfileData[];
@@ -83,7 +86,7 @@ export interface QuizQuestion {
   correctIndex: number;
 }
 
-export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL';
+export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL' | 'SUBSCRIPTION';
 
 export interface ShopItemOverride {
   id: string;

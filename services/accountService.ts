@@ -5,6 +5,8 @@ export interface AccountData {
   email: string;
   full_name: string | null;
   is_premium: boolean;
+  trial_end_date: string | null;
+  subscription_status: string | null;
   theme: 'light' | 'dark';
   created_at: string;
   updated_at: string;
@@ -70,7 +72,7 @@ export const AccountService = {
    */
   async updateAccount(
     userId: string,
-    updates: Partial<Pick<AccountData, 'full_name' | 'theme' | 'is_premium'>>
+    updates: Partial<Pick<AccountData, 'full_name' | 'theme' | 'is_premium' | 'trial_end_date' | 'subscription_status'>>
   ): Promise<boolean> {
     if (!supabase) {
       return false;

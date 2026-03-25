@@ -59,7 +59,7 @@ export const generateDailyDevotional = async (profile: ProfileType) => {
       }
     });
 
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Error fetching devotional:", error);
     return null;
@@ -96,7 +96,7 @@ export const generateKidVerse = async () => {
         }
       }
     });
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || '{}');
   } catch (error) {
     return { ref: "Salmos 23:1", text: "O Senhor é o meu pastor; nada me faltará." };
   }
@@ -133,7 +133,7 @@ export const getBibleChapter = async (book: string, chapter: number): Promise<Bi
       }
     });
 
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || '[]');
   } catch (error) {
     console.error("Error fetching Bible chapter:", error);
     return [];
@@ -173,7 +173,7 @@ export const generateQuiz = async (profile: ProfileType) => {
       }
     });
 
-    return JSON.parse(response.text) as QuizQuestion[];
+    return JSON.parse(response.text || '[]') as QuizQuestion[];
   } catch (error) {
     console.error("Error generating quiz:", error);
     return [];

@@ -66,7 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const loadProfiles = async () => {
         setLoading(true);
         const allProfiles = await ProfileService.getAllAllProfiles();
-        setProfiles(allProfiles);
+        setProfiles(allProfiles as unknown as ProfileData[]);
         setLoading(false);
     };
 

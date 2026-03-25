@@ -32,7 +32,11 @@ export const Database = {
         isPremium: false,
         theme: 'light',
         profiles: [],
-        currentProfileId: null
+        currentProfileId: null,
+        authUserId: null,
+        trialEndDate: null,
+        subscriptionStatus: null,
+        userType: null
       };
       
       localStorage.setItem(`${USER_DATA_PREFIX}${cleanEmail}`, JSON.stringify(initialData));
@@ -59,7 +63,11 @@ export const Database = {
             isPremium: false,
             theme: 'light',
             profiles: [],
-            currentProfileId: null
+            currentProfileId: null,
+            authUserId: null,
+            trialEndDate: null,
+            subscriptionStatus: null,
+            userType: null
           };
           localStorage.setItem(`${USER_DATA_PREFIX}${cleanEmail}`, JSON.stringify(recoverData));
         }

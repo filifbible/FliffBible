@@ -52,7 +52,7 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
           }
         });
 
-        const generated = JSON.parse(response.text);
+        const generated = JSON.parse(response.text || '{}');
         const newTheme: ArtMissionTheme = { ...generated, date: today };
         setTheme(newTheme);
         onThemeGenerated(newTheme);

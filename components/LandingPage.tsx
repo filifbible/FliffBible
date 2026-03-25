@@ -1,15 +1,54 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import CardPaymentModal from './CardPaymentModal';
+import video1 from '../assets/Filipe Montion Desing (1).mp4';
 
 interface LandingPageProps {
     onLogin: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+    const [showCardPayment, setShowCardPayment] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<'familia' | 'anual' | null>(null);
+    const [isMuted, setIsMuted] = useState(true);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const toggleMute = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = !videoRef.current.muted;
+            setIsMuted(videoRef.current.muted);
+        }
+    };
+
     const scrollToPlans = () => {
         const plansSection = document.getElementById('plans');
         if (plansSection) {
             plansSection.scrollIntoView({ behavior: 'smooth' });
         }
+    };
+
+    const handleOpenCardPayment = (planId: 'familia' | 'anual') => {
+        setSelectedPlan(planId);
+        setShowCardPayment(true);
+    };
+
+    const handleCancelCardPayment = () => {
+        setShowCardPayment(false);
+        setSelectedPlan(null);
+    };
+
+    const handleSubscriptionSuccess = (result: any) => {
+        console.log('✅ Assinatura criada:', result);
+        
+        // Fechar modal - o CardPaymentModal já mostra o popup de sucesso
+        setShowCardPayment(false);
+        setSelectedPlan(null);
+        
+        // Redirecionar para tela de login
+        onLogin();
+    };
+
+    const handleSubscriptionError = (error: string) => {
+        console.error('❌ Erro na assinatura:', error);
     };
 
     return (
@@ -74,26 +113,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <p className="text-gray-500 dark:text-gray-400">Descubra tudo o que preparamos para você e sua família.</p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8">
-                        {/* Video 1 Placeholder */}
-                        <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-4 shadow-xl border border-gray-100 dark:border-gray-700">
-                            <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-3xl relative overflow-hidden flex items-center justify-center group cursor-pointer">
-                                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2"></div>
-                                </div>
-                                {/* Aqui virá o iframe ou video tag posteriormente */}
-                                <p className="absolute bottom-6 left-6 text-white font-bold text-lg drop-shadow-md">Tour pela Plataforma</p>
-                            </div>
-                        </div>
-
-                        {/* Video 2 Placeholder */}
-                        <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-4 shadow-xl border border-gray-100 dark:border-gray-700">
-                            <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-3xl relative overflow-hidden flex items-center justify-center group cursor-pointer">
-                                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <div className="w-0 h-0 border-t-[15px] border-t-transparent border-l-[25px] border-l-white border-b-[15px] border-b-transparent ml-2"></div>
-                                </div>
-                                {/* Aqui virá o iframe ou video tag posteriormente */}
-                                <p className="absolute bottom-6 left-6 text-white font-bold text-lg drop-shadow-md">Vídeo 1</p>
+                    <div className="flex justify-center">
+                        {/* Video */}
+                        <div className="w-full max-w-3xl bg-white dark:bg-gray-900 rounded-[2rem] p-4 shadow-xl border border-gray-100 dark:border-gray-700">
+                            <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-3xl relative overflow-hidden group cursor-pointer">
+                                <video
+                                    ref={videoRef}
+                                    src={video1}
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                    className="w-full h-full object-cover rounded-3xl"
+                                />
+                                {/* Botão de som */}
+                                <button
+                                    onClick={toggleMute}
+                                    className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all hover:scale-110 shadow-lg"
+                                    title={isMuted ? 'Ativar som' : 'Desativar som'}
+                                >
+                                    {isMuted ? '🔇' : '🔊'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -128,7 +168,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                     <span className="mr-3 text-gray-300">✕</span> Missões de Arte
                                 </li>
                             </ul>
-                            <button onClick={onLogin} className="w-full py-4 rounded-xl font-bold bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-white hover:bg-indigo-100 transition-colors">
+                            <button 
+                                onClick={onLogin} 
+                                className="w-full py-4 rounded-xl font-bold bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-white hover:bg-indigo-100 transition-colors"
+                            >
                                 Começar Grátis
                             </button>
                         </div>
@@ -157,7 +200,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                     <span className="mr-3 bg-white/20 rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</span> Relatórios de Progresso
                                 </li>
                             </ul>
-                            <button onClick={onLogin} className="w-full py-4 rounded-xl font-black bg-white text-indigo-600 hover:bg-indigo-50 transition-colors shadow-lg">
+                            <button 
+                                onClick={() => handleOpenCardPayment('familia')} 
+                                className="w-full py-4 rounded-xl font-black bg-white text-indigo-600 hover:bg-indigo-50 transition-colors shadow-lg"
+                            >
                                 Assinar Família
                             </button>
                         </div>
@@ -181,7 +227,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                     <span className="mr-3 text-emerald-500">✓</span> Suporte Prioritário
                                 </li>
                             </ul>
-                            <button onClick={onLogin} className="w-full py-4 rounded-xl font-bold bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-white hover:bg-indigo-100 transition-colors">
+                            <button 
+                                onClick={() => handleOpenCardPayment('anual')} 
+                                className="w-full py-4 rounded-xl font-bold bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-white hover:bg-indigo-100 transition-colors"
+                            >
                                 Assinar Anual
                             </button>
                         </div>
@@ -196,6 +245,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <p className="text-gray-500 dark:text-gray-500 text-sm">© 2024 Fliff Bible+. Todos os direitos reservados.</p>
                 </div>
             </footer>
+
+            {/* Card Payment Modal */}
+            {showCardPayment && selectedPlan && (
+                <CardPaymentModal
+                    planId={selectedPlan}
+                    planName={selectedPlan === 'familia' ? 'Família +' : 'Anual'}
+                    planPrice={selectedPlan === 'familia' ? 29.90 : 299.00}
+                    onSuccess={handleSubscriptionSuccess}
+                    onError={handleSubscriptionError}
+                    onCancel={handleCancelCardPayment}
+                />
+            )}
         </div>
     );
 };
