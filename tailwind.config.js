@@ -1,8 +1,9 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
   theme: {
@@ -11,6 +12,9 @@ export default {
         sans: ['Inter', 'sans-serif'],
         outfit: ['Outfit', 'sans-serif'],
       },
+      backgroundImage: {
+        'split-gradient': 'linear-gradient(to right, #4c1d95 30%, #4c1d95 35%, #2e1065 65%, #2e1065 70%)',
+      }
     },
   },
   plugins: [],

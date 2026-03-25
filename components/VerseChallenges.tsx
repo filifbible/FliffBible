@@ -65,7 +65,7 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
             }
           }
         });
-        setChallenge(JSON.parse(response.text));
+        setChallenge(JSON.parse(response.text || '{}'));
       } catch (e) {
         setChallenge({
           ref: "Salmos 23:1",

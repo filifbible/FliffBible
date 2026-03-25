@@ -21,7 +21,7 @@ export const SubscriptionCheckout: React.FC<SubscriptionCheckoutProps> = ({
   const [mp, setMp] = useState<any>(null);
   const [cardPaymentBrick, setCardPaymentBrick] = useState<any>(null);
 
-  const PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
+  const PUBLIC_KEY = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
 
   // Carregar SDK do Mercado Pago
   useEffect(() => {

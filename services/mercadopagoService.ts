@@ -40,17 +40,11 @@ export interface CardData {
 
 class MercadoPagoService {
   private publicKey: string;
-  private apiUrl: string;
   private mp: any;
 
   constructor() {
-    this.publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY || '';
-    this.apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-    
-    console.log('🔧 MercadoPago Service initialized:', {
-      apiUrl: this.apiUrl,
-      hasPublicKey: !!this.publicKey
-    });
+    this.publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '';
+    console.log('🔧 MercadoPago Service initialized. Has public key:', !!this.publicKey);
   }
 
   /**
@@ -58,12 +52,12 @@ class MercadoPagoService {
    */
   async getPlans(): Promise<{ success: boolean; plans: Record<string, any> }> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/subscription/plans`);
+      const response = await fetch('/api/plans');
       if (!response.ok) throw new Error('Falha ao buscar planos');
       const data = await response.json();
-      return data; // { success: true, plans: { familia: { id, name, price, frequency }, anual: {...} } }
+      return data;
     } catch (error) {
-      console.error('❌ Erro ao buscar planos do backend:', error);
+      console.error('❌ Erro ao buscar planos:', error);
       return { success: false, plans: {} };
     }
   }
@@ -168,11 +162,9 @@ class MercadoPagoService {
 
       console.log('📦 Criando assinatura:', { userId, userEmail, planId });
 
-      const response = await fetch(`${this.apiUrl}/api/subscription/create`, {
+      const response = await fetch('/api/subscription', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           payer_email: userEmail,
@@ -205,7 +197,7 @@ class MercadoPagoService {
     status?: string;
   }> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/subscription/status/${userId}`);
+      const response = await fetch(`/api/subscription-status?userId=${userId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao verificar status da assinatura');

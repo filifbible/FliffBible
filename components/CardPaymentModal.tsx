@@ -39,8 +39,8 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
     const createdUserIdRef = useRef<string | null>(null);
     const brickControllerRef = useRef<any>(null);
 
-    const PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    const PUBLIC_KEY = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
+    const API_URL = process.env.NEXT_PUBLIC_APP_URL || '';
 
     useEffect(() => {
         loadMercadoPagoSDK();
@@ -55,7 +55,7 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
     // Busca o ID real do plano no backend (evita IDs hardcoded desatualizados)
     const loadPlanId = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/subscription/plans`);
+            const res = await fetch(`${API_URL}/api/plans`);
             const data = await res.json();
             if (data.success && data.plans?.[planId]?.id) {
                 setPlanMPId(data.plans[planId].id);
@@ -168,7 +168,7 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
 
             console.log('📤 Enviando para backend:', payload);
 
-            const response = await fetch(`${API_URL}/api/subscription/create`, {
+            const response = await fetch(`${API_URL}/api/subscription`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

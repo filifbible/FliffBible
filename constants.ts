@@ -31,6 +31,18 @@ export const PROFILE_CONFIGS = {
     color: 'bg-yellow-400',
     description: 'Histórias ilustradas e jogos divertidos!'
   },
+  [ProfileType.TEENS]: {
+    label: 'Adolescentes',
+    icon: '🧑',
+    color: 'bg-emerald-400',
+    description: 'Devocionais práticos e desafios diários!'
+  },
+  [ProfileType.YOUTH]: {
+    label: 'Jovens',
+    icon: '🧑',
+    color: 'bg-emerald-400',
+    description: 'Devocionais práticos e desafios diários!'
+  },
   [ProfileType.ADULTS]: {
     label: 'Adultos',
     icon: '👵',
