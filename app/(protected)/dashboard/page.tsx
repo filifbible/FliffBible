@@ -169,7 +169,7 @@ export default function DashboardPage() {
 
             {/* Missão de Desenho (apenas crianças) */}
             {!isAdult && (
-              <div onClick={() => router.push('/games')} className={`group relative overflow-hidden rounded-[3rem] p-10 border-4 transition-all cursor-pointer ${isArtDone ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-pink-50 border-pink-100 dark:bg-pink-900/20 dark:border-pink-800 hover:border-pink-300'}`}>
+              <div onClick={() => router.push('/art-mission')} className={`group relative overflow-hidden rounded-[3rem] p-10 border-4 transition-all cursor-pointer ${isArtDone ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-pink-50 border-pink-100 dark:bg-pink-900/20 dark:border-pink-800 hover:border-pink-300'}`}>
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-6xl">{isArtDone ? '🎨' : '📸'}</span>
                   <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full ${isArtDone ? 'bg-emerald-200 text-emerald-700' : 'bg-pink-200 text-pink-700'}`}>
@@ -212,7 +212,8 @@ export default function DashboardPage() {
             { label: 'Jogar',   icon: '🎮', route: '/games',   hover: 'hover:bg-emerald-50' },
             ...(!isAdult ? [
               { label: 'Loja',   icon: '🛍️', route: '/shop',    hover: 'hover:bg-yellow-50' },
-              { label: 'Ateliê', icon: '🎨', route: '/games',   hover: 'hover:bg-pink-50' },
+              { label: 'Ateliê', icon: '🎨', route: '/art-mission',   hover: 'hover:bg-pink-50' },
+              { label: 'Galeria', icon: '🖼️', route: '/gallery',   hover: 'hover:bg-blue-50' },
             ] : []),
             { label: 'Jornada', icon: '🏆', route: '/ranking', hover: 'hover:bg-indigo-50' },
           ].map(item => (

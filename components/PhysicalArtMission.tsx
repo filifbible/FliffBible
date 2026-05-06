@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import PhotoCapture from './PhotoCapture';
 import { ArtMissionTheme } from '../types';
+import { galleryService } from '../services/galleryService';
 
 interface PhysicalArtMissionProps {
   onSave: (base64: string) => void;
@@ -106,12 +107,25 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
     );
   }
 
+  const handleSave = async (base64: string) => {
+    try {
+      setLoading(true);
+      await galleryService.uploadImage(base64);
+      onSave(base64); // Notifica o pai para atualizar status/moedas
+    } catch (error) {
+      console.error('Erro ao salvar imagem:', error);
+      alert('Erro ao salvar sua arte. Tente novamente!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (showCamera) {
     return (
       <div className="p-4 md:p-8 max-w-xl mx-auto">
         <h2 className="text-2xl font-black text-center text-gray-800 dark:text-white mb-6 font-outfit">Registre sua Obra 📸</h2>
         <PhotoCapture
-          onCapture={onSave}
+          onCapture={handleSave}
           onCancel={() => setShowCamera(false)}
         />
       </div>
