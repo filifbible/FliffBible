@@ -1,40 +1,14 @@
 import { supabase } from './supabase';
+import { Testament, BibleBook, BibleVerse } from '../types';
 
-// ========================================
-// Tipos atualizados para tabelas reais
-// ========================================
+// Re-exportamos para que código externo que importava daqui continue funcionando
+export type { Testament, BibleBook, BibleVerse };
 
-export interface Testament {
-  id: number;
-  name: string;
-}
+/** Alias interno: Book = BibleBook (campos do banco em snake_case são opcionais em BibleBook) */
+export type Book = BibleBook;
 
-export interface Book {
-  id: number;
-  book_reference_id: number;
-  testament_reference_id: number;
-  name: string;
-  chapters?: number; // Calculado dinamicamente
-}
-
-export interface Verse {
-  id: number;
-  book_id: number;
-  chapter: number;
-  verse: number;
-  text: string;
-}
-
-// ========================================
-// Interface para BibleReader (compatibilidade)
-// ========================================
-
-export interface BibleBook {
-  id: number;
-  name: string;
-  testament: 'Old' | 'New';
-  chapters: number;
-}
+/** Alias para Verse do banco (usa book_id em vez de book string) */
+export type Verse = Pick<BibleVerse, 'id' | 'book_id' | 'chapter' | 'verse' | 'text'>;
 
 /**
  * Serviço para consultar dados bíblicos do Supabase
@@ -278,7 +252,8 @@ export const BibleSupabaseService = {
     // Buscar contagem de capítulos para cada livro
     const booksWithChapters = await Promise.all(
       books.map(async (book) => {
-        const chapters = await BibleSupabaseService.getBookChapterCount(book.id);
+        // book.id sempre existe quando vem do banco (id é opcional apenas na UI)
+        const chapters = await BibleSupabaseService.getBookChapterCount(book.id!);
         return {
           id: book.id,
           name: book.name,

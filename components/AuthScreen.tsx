@@ -1,8 +1,11 @@
 
-
 import React, { useState } from 'react';
 import { Database } from '../services/database';
 import { AuthService } from '../services/authService';
+import { CommandBus } from '../commands/command-bus';
+import { AuthenticateCommand } from '../commands/handlers/authenticate.handler';
+
+const commandBus = CommandBus.getInstance();
 
 interface AuthScreenProps {
   onAuthComplete: (email: string) => void;
@@ -56,14 +59,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
           return;
         }
 
-        // Tentar registrar com Supabase (sem user_type, será definido ao criar perfil)
+        // Registrar via CommandBus
         try {
-          await AuthService.register(
-            cleanEmail,
+          await commandBus.execute(new AuthenticateCommand({
+            email: cleanEmail,
             password,
-            null, // user_type será definido ao criar o primeiro perfil
-            fullName || undefined
-          );
+            isRegister: true,
+            fullName: fullName || undefined,
+          }));
           onAuthComplete(cleanEmail);
         } catch (supabaseError: any) {
           // Fallback para localStorage se Supabase falhar
@@ -78,9 +81,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthComplete }) => {
           }
         }
       } else {
-        // Login - tentar Supabase primeiro
+        // Login via CommandBus
         try {
-          await AuthService.login(cleanEmail, password);
+          await commandBus.execute(new AuthenticateCommand({ email: cleanEmail, password }));
           onAuthComplete(cleanEmail);
         } catch (supabaseError: any) {
           // Fallback para localStorage se Supabase falhar

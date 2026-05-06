@@ -32,7 +32,7 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
 
   useEffect(() => {
     const fetchChallenge = async () => {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
       try {
         const prompt = `Gere um desafio bíblico para crianças. 
         1. Escolha um versículo (ex: Salmos 23:1). 

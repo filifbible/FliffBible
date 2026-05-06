@@ -1,3 +1,11 @@
+import { CompleteArtChallengeCommand, CompleteArtChallengeHandler } from './handlers/complete-art-challenge.handler';
+import { CompleteVerseChallengeCommand, CompleteVerseChallengeHandler } from './handlers/complete-verse-challenge.handler';
+import { AuthenticateCommand, AuthenticateHandler } from './handlers/authenticate.handler';
+import { SelectProfileCommand, SelectProfileHandler } from './handlers/select-profile.handler';
+import { BuyItemCommand, BuyItemHandler } from './handlers/buy-item.handler';
+import { GameWinCommand, GameWinHandler } from './handlers/game-win.handler';
+import { LogoutCommand, LogoutHandler } from './handlers/logout.handler';
+
 export interface Command {
   type: string;
   payload?: any;
@@ -11,7 +19,16 @@ export class CommandBus {
   private static instance: CommandBus;
   private handlers: Map<string, CommandHandler> = new Map();
 
-  private constructor() {}
+  private constructor() {
+    // Registro automático de todos os handlers do projeto
+    this.register('CompleteArtChallengeCommand',   new CompleteArtChallengeHandler());
+    this.register('CompleteVerseChallengeCommand', new CompleteVerseChallengeHandler());
+    this.register('AuthenticateCommand',           new AuthenticateHandler());
+    this.register('SelectProfileCommand',          new SelectProfileHandler());
+    this.register('BuyItemCommand',                new BuyItemHandler());
+    this.register('GameWinCommand',                new GameWinHandler());
+    this.register('LogoutCommand',                 new LogoutHandler());
+  }
 
   public static getInstance(): CommandBus {
     if (!CommandBus.instance) {

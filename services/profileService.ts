@@ -17,7 +17,6 @@ export interface ProfileData {
   last_video_date: string | null;
   unlocked_items: string[];
   favorites: string[];
-  gallery: string[];
   recordings: AudioRecording[];
   paintings: string[];
   art_mission_theme: ArtMissionTheme | null;
@@ -58,7 +57,6 @@ export const ProfileService = {
         streak: 1,
         unlocked_items: ['coloring_book', 'pixel_free'],
         favorites: [],
-        gallery: [],
         recordings: [],
         paintings: [],
       })
@@ -210,7 +208,7 @@ export const ProfileService = {
    */
   async updateArrayField(
     profileId: string,
-    field: 'unlocked_items' | 'favorites' | 'gallery' | 'recordings' | 'paintings',
+    field: 'unlocked_items' | 'favorites' | 'recordings' | 'paintings',
     value: any[]
   ): Promise<boolean> {
     return await this.updateProfile(profileId, { [field]: value });
@@ -221,7 +219,7 @@ export const ProfileService = {
    */
   async addToArray(
     profileId: string,
-    field: 'unlocked_items' | 'favorites' | 'gallery' | 'recordings' | 'paintings',
+    field: 'unlocked_items' | 'favorites' | 'recordings' | 'paintings',
     item: any
   ): Promise<boolean> {
     const profile = await this.getProfile(profileId);

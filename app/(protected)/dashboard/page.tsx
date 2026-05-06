@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
+import { supabase } from '@/services/supabase';
 import { ProfileService } from '@/services/profileService';
 import { ProfileData, ProfileType } from '@/types';
 import { PROFILE_CONFIGS } from '@/constants';
 import { generateDailyDevotional } from '@/services/geminiService';
+import { CommandBus } from '@/commands/command-bus';
+import { LogoutCommand } from '@/commands/handlers/logout.handler';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+const commandBus = CommandBus.getInstance();
+
 
 const Navigation = dynamic(() => import('@/components/Navigation'), { ssr: false });
 
@@ -35,6 +35,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
+      if (!supabase) { router.replace('/auth'); return; }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { router.replace('/auth'); return; }
 
@@ -51,7 +52,7 @@ export default function DashboardPage() {
         bio: data.bio ?? undefined,
         points: data.points, coins: data.coins, streak: data.streak,
         unlockedItems: data.unlocked_items ?? [],
-        favorites: data.favorites ?? [], gallery: data.gallery ?? [],
+        favorites: data.favorites ?? [],
         recordings: data.recordings ?? [], paintings: data.paintings ?? [],
         lastChallengeDate: data.last_challenge_date,
         lastArtDate: data.last_art_date,
@@ -74,7 +75,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     localStorage.removeItem('selectedProfileId');
-    await supabase.auth.signOut();
+    await commandBus.execute(new LogoutCommand());
     router.replace('/auth');
   };
 

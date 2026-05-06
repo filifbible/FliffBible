@@ -16,32 +16,17 @@ const GalleryView = dynamic(() => import('@/components/GalleryView'), {
 
 export default function GalleryPage() {
   const router = useRouter();
-  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
     const profileId = localStorage.getItem('selectedProfileId');
     if (!profileId) {
       router.replace('/home');
-      return;
     }
-
-    async function loadGallery() {
-      try {
-        const profile = await ProfileService.getProfile(profileId!);
-        if (profile && profile.gallery) {
-          setImages(profile.gallery);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar galeria:', error);
-      }
-    }
-    loadGallery();
   }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <GalleryView
-        images={images}
         onBack={() => router.back()}
       />
     </div>

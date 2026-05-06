@@ -45,24 +45,10 @@ export default function ArtMissionPage() {
     loadProfile();
   }, [router]);
 
-  const handleSave = async (base64: string) => {
-    if (!profileId) return;
-
-    try {
-      // Salva a imagem na galeria
-      await ProfileService.addToArray(profileId, 'gallery', base64);
-      
-      // Registra que a missão foi concluída hoje
-      await ProfileService.updateLastActivity(profileId, 'art');
-      
-      // Recompensa o usuário (ex: 50 moedas)
-      await ProfileService.addRewards(profileId, 0, 50);
-
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Erro ao salvar missão:', error);
-      alert('Houve um erro ao salvar sua arte. Por favor, tente novamente!');
-    }
+  const handleSave = async (imagePath: string) => {
+    // O processamento completo (upload, registro, moedas) agora é feito 
+    // pelo CompleteArtChallengeHandler via Command Bus no componente filho.
+    router.push('/dashboard');
   };
 
   const handleThemeGenerated = async (theme: ArtMissionTheme) => {

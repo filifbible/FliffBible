@@ -1,9 +1,9 @@
 import { supabase } from './supabase';
+import { ShopItem } from '../types';
 
-export interface ShopItemPrice {
-    id: string;
-    price: number;
-}
+export type { ShopItem };
+/** @deprecated Use ShopItem from types */
+export type ShopItemPrice = ShopItem;
 
 export const ShopService = {
     /**

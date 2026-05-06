@@ -38,7 +38,7 @@ export const galleryService = {
       .from('gallery_images')
       .insert({
         profile_id: targetProfileId,
-        storage_path: path
+        path: path
       });
 
     if (dbError) throw dbError;
@@ -59,7 +59,7 @@ export const galleryService = {
     // Busca os caminhos na tabela (mais eficiente que listar storage)
     const { data, error } = await client
       .from('gallery_images')
-      .select('storage_path')
+      .select('path')
       .eq('profile_id', targetProfileId)
       .order('created_at', { ascending: false });
 
@@ -73,7 +73,7 @@ export const galleryService = {
       (data || []).map(async (row) => {
         const { data: signed } = await client.storage
           .from('user-gallery')
-          .createSignedUrl(row.storage_path, 3600); // URL válida por 1 hora
+          .createSignedUrl(row.path, 3600); // URL válida por 1 hora
         return signed?.signedUrl || '';
       })
     );

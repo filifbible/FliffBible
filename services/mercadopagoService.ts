@@ -3,13 +3,9 @@
  * Gerencia criação de card tokens e assinaturas usando Preapproval API
  */
 
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  interval: 'free' | 'monthly' | 'yearly';
-  description: string;
-}
+import { SubscriptionPlan, CardData } from '../types';
+
+export type { SubscriptionPlan, CardData };
 
 // Planos locais com metadados (sem IDs — os IDs vêm do backend)
 export const PLAN_METADATA: Record<string, Omit<SubscriptionPlan, 'id'>> = {
@@ -26,17 +22,6 @@ export const PLAN_METADATA: Record<string, Omit<SubscriptionPlan, 'id'>> = {
     description: 'Todos os recursos + conteúdos exclusivos'
   }
 };
-
-
-export interface CardData {
-  cardNumber: string;
-  cardholderName: string;
-  expirationMonth: string;
-  expirationYear: string;
-  securityCode: string;
-  identificationType: string;
-  identificationNumber: string;
-}
 
 class MercadoPagoService {
   private publicKey: string;

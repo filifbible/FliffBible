@@ -46,7 +46,6 @@ export interface ProfileData {
   lastArtDate: string | null;
   lastVideoDate?: string | null;
   favorites: string[];
-  gallery?: string[];
   recordings?: AudioRecording[];
   paintings?: string[];
   artMissionTheme?: ArtMissionTheme;
@@ -67,14 +66,30 @@ export interface UserState {
   currentProfileId: string | null;
 }
 
+// ── Bíblia ────────────────────────────────────────────────────────────────────
+
+/** Testamento (tabela: testament) */
+export interface Testament {
+  id: number;
+  name: string;
+}
+
+/** Livro bíblico (tabela: books). Unifica BibleBook + Book dos serviços. */
 export interface BibleBook {
+  id?: number;
   name: string;
   testament: 'Old' | 'New';
   chapters: number;
+  /** Referência interna do banco */
+  book_reference_id?: number;
+  testament_reference_id?: number;
 }
 
+/** Versículo (tabela: verses). Unifica BibleVerse + Verse dos serviços. */
 export interface BibleVerse {
+  id?: number;
   book: string;
+  book_id?: number;
   chapter: number;
   verse: number;
   text: string;
@@ -86,10 +101,68 @@ export interface QuizQuestion {
   correctIndex: number;
 }
 
-export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL' | 'SUBSCRIPTION';
+// ── Galeria ───────────────────────────────────────────────────────────────────
 
-export interface ShopItemOverride {
+/** Imagem salva pelo usuário (tabela: gallery_images) */
+export interface GalleryImage {
+  id: string;
+  profile_id: string;
+  path: string;
+  created_at: string;
+}
+
+// ── Loja ─────────────────────────────────────────────────────────────────────
+
+/** Item da loja com preço customizável (tabela: shop_items) */
+export interface ShopItem {
   id: string;
   price: number;
 }
+
+/** @deprecated Use ShopItem */
+export type ShopItemOverride = ShopItem;
+/** @deprecated Use ShopItem */
+export type ShopItemPrice = ShopItem;
+
+// ── Assinaturas / Mercado Pago ────────────────────────────────────────────────
+
+/** Plano de assinatura disponível */
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  interval: 'free' | 'monthly' | 'yearly';
+  description: string;
+}
+
+/** Dados do cartão para tokenização no Mercado Pago */
+export interface CardData {
+  cardNumber: string;
+  cardholderName: string;
+  expirationMonth: string;
+  expirationYear: string;
+  securityCode: string;
+  identificationType: string;
+  identificationNumber: string;
+}
+
+// ── Navegação ─────────────────────────────────────────────────────────────────
+
+export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL' | 'SUBSCRIPTION';
+
+// ── Conta ─────────────────────────────────────────────────────────────────────
+
+/** Conta de usuário (tabela: accounts) */
+export interface AccountData {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_premium: boolean;
+  trial_end_date: string | null;
+  subscription_status: string | null;
+  theme: 'light' | 'dark';
+  created_at: string;
+  updated_at: string;
+}
+
 
