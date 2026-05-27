@@ -32,6 +32,7 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
     const [userPassword, setUserPassword] = useState('');
     const [showCardForm, setShowCardForm] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [couponCode, setCouponCode] = useState('');
     const [subscriptionData, setSubscriptionData] = useState<any>(null);
     const [accountError, setAccountError] = useState('');
     const [createdUserId, setCreatedUserId] = useState<string | null>(null);
@@ -163,7 +164,9 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
                 user_id: resolvedUserId,
                 payer_email: userEmail,
                 plan_id: planMPId,
-                card_token_id: cardFormData.token
+                card_token_id: cardFormData.token,
+                payment_method_id: cardFormData.payment_method_id,
+                couponCode: couponCode
             };
 
             console.log('📤 Enviando para backend:', payload);
@@ -387,8 +390,23 @@ export const CardPaymentModal: React.FC<CardPaymentModalProps> = ({
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                                     Dados do Cartão
                                 </h3>
-                                
+
                                 <div id="cardPaymentBrick_container"></div>
+
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Cupom de Desconto (opcional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white uppercase"
+                                        placeholder="EX: DESCONTO50"
+                                        disabled={loading}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">O desconto será aplicado no primeiro mês.</p>
+                                </div>
 
                                 {loading && (
                                     <div className="mt-4 flex items-center justify-center">

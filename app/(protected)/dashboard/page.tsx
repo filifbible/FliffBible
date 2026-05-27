@@ -196,7 +196,7 @@ export default function DashboardPage() {
           </button>
 
           {!isAdult && (
-            <button onClick={() => router.push('/bible')} className="relative h-44 bg-gradient-to-br from-rose-400 to-orange-400 rounded-[3rem] p-8 text-white shadow-2xl overflow-hidden group transition-all hover:scale-[1.02] border-2 border-white/10">
+            <button onClick={() => router.push('/voz-da-fe')} className="relative h-44 bg-gradient-to-br from-rose-400 to-orange-400 rounded-[3rem] p-8 text-white shadow-2xl overflow-hidden group transition-all hover:scale-[1.02] border-2 border-white/10">
               <div className="absolute right-[-20px] top-[-20px] text-[12rem] opacity-20 transform group-hover:rotate-12 transition-transform">🎤</div>
               <div className="relative z-10 h-full flex flex-col justify-center items-start text-left">
                 <span className="bg-white/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">Minha Voz</span>

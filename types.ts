@@ -34,6 +34,7 @@ export interface ArtMissionTheme {
 
 export interface ProfileData {
   id: string;
+  account_id: string;
   name: string;
   type: ProfileType;
   avatar?: string;
@@ -51,6 +52,10 @@ export interface ProfileData {
   artMissionTheme?: ArtMissionTheme;
   is_admin?: boolean;
   is_blocked?: boolean;
+  account?: {
+    is_premium?: boolean;
+    subscription_status?: string | null;
+  };
 }
 
 export interface UserState {
@@ -124,6 +129,32 @@ export type ShopItemOverride = ShopItem;
 /** @deprecated Use ShopItem */
 export type ShopItemPrice = ShopItem;
 
+// ── Cupons de Desconto ────────────────────────────────────────────────────────
+
+/** Cupom de desconto (tabela: coupons) */
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_percent: number;
+  max_uses: number;
+  times_used: number;
+  active: boolean;
+  created_by?: string;
+  created_at?: string;
+}
+
+/** Uso de cupom (tabela: coupon_uses) */
+export interface CouponUse {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  used_at: string;
+  account?: {
+    full_name: string | null;
+    email: string;
+  };
+}
+
 // ── Assinaturas / Mercado Pago ────────────────────────────────────────────────
 
 /** Plano de assinatura disponível */
@@ -158,6 +189,7 @@ export interface AccountData {
   email: string;
   full_name: string | null;
   is_premium: boolean;
+  is_admin?: boolean;
   trial_end_date: string | null;
   subscription_status: string | null;
   theme: 'light' | 'dark';

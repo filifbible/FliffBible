@@ -4,7 +4,7 @@ import { AudioRecording } from '../types';
 import { generateKidVerse } from '../services/geminiService';
 
 interface BibleReadingKidsProps {
-  onSaveRecording: (audio: string, ref: string) => void;
+  onSaveRecording: (audio: Blob | string, ref: string) => void;
   recordings: AudioRecording[];
   onBack: () => void;
 }
@@ -41,6 +41,10 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
       setCurrentAudioBlob(null);
       setCurrentAudioUrl(null);
 
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Seu navegador não suporta gravação de áudio ou a página não é segura (precisa de HTTPS ou localhost).");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       // Ordem de preferência de codecs para garantir compatibilidade máxima (iOS/Android/Desktop)
@@ -73,9 +77,9 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao gravar:", err);
-      alert("Precisamos de permissão para usar o microfone!");
+      alert("Erro ao acessar o microfone: " + (err.message || err));
     }
   };
 
@@ -116,16 +120,11 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
 
   const handleSave = () => {
     if (currentAudioBlob && verse) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        onSaveRecording(base64data, verse.ref);
-        if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
-        setCurrentAudioBlob(null);
-        setCurrentAudioUrl(null);
-        fetchVerse(); // Carrega novo versículo após salvar
-      };
-      reader.readAsDataURL(currentAudioBlob);
+      onSaveRecording(currentAudioBlob, verse.ref);
+      if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+      setCurrentAudioBlob(null);
+      setCurrentAudioUrl(null);
+      fetchVerse(); // Carrega novo versículo após salvar
     }
   };
 

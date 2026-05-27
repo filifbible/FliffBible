@@ -24,6 +24,10 @@ export interface ProfileData {
   updated_at: string;
   is_admin?: boolean;
   is_blocked?: boolean;
+  account?: {
+    is_premium?: boolean;
+    subscription_status?: string | null;
+  };
 }
 
 export const ProfileService = {
@@ -296,7 +300,7 @@ export const ProfileService = {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, account:accounts(is_premium, subscription_status)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -304,7 +308,13 @@ export const ProfileService = {
       return [];
     }
 
-    return data || [];
+    // O Supabase pode retornar array para joins 1:1, desembrulhamos
+    const formattedData = (data || []).map((item: any) => ({
+      ...item,
+      account: Array.isArray(item.account) ? item.account[0] : item.account
+    }));
+
+    return formattedData;
   },
 
   /**

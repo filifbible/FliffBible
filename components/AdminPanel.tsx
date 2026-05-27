@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ProfileData } from '../types';
+import { ProfileData, Coupon, CouponUse } from '../types';
 import { ProfileService } from '../services/profileService';
+import { CouponService } from '../services/couponService';
 import { SHOP_ITEMS } from '../constants';
 import { ShopService, ShopItemPrice } from '../services/shopService';
 import HomeButton from './HomeButton';
@@ -13,7 +14,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [profiles, setProfiles] = useState<ProfileData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
-    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP'>('USERS');
+    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER'>('USERS');
+
+    // Create User states
+    const [newUserName, setNewUserName] = useState('');
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserPassword, setNewUserPassword] = useState('');
+    const [newUserIsAdmin, setNewUserIsAdmin] = useState(false);
+    const [newUserIsPremium, setNewUserIsPremium] = useState(false);
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
 
     // Shop states
     const [shopPrices, setShopPrices] = useState<ShopItemPrice[]>([]);
@@ -27,11 +36,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [coinAmount, setCoinAmount] = useState<number>(0);
     const [deleteConfirm, setDeleteConfirm] = useState('');
 
+    // Coupons states
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [newCouponCode, setNewCouponCode] = useState('');
+    const [newCouponDiscount, setNewCouponDiscount] = useState<number>(10);
+    const [newCouponMaxUses, setNewCouponMaxUses] = useState<number>(0);
+
+    // Coupon Report states
+    const [selectedCouponForReport, setSelectedCouponForReport] = useState<Coupon | null>(null);
+    const [couponUses, setCouponUses] = useState<CouponUse[]>([]);
+    const [loadingReport, setLoadingReport] = useState(false);
+
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newUserName || !newUserEmail || !newUserPassword) {
+            return alert('Preencha todos os campos obrigatórios.');
+        }
+
+        setIsCreatingUser(true);
+        try {
+            const res = await fetch('/api/admin/create-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: newUserEmail,
+                    password: newUserPassword,
+                    fullName: newUserName,
+                    isAdmin: newUserIsAdmin,
+                    isPremium: newUserIsPremium
+                })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Erro ao criar usuário');
+            
+            alert('Usuário criado com sucesso!');
+            setNewUserName('');
+            setNewUserEmail('');
+            setNewUserPassword('');
+            setNewUserIsAdmin(false);
+            setNewUserIsPremium(false);
+            
+            if (activeTab === 'USERS') {
+                loadProfiles();
+            }
+        } catch (err: any) {
+            alert(err.message || 'Erro desconhecido');
+        } finally {
+            setIsCreatingUser(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'USERS') {
             loadProfiles();
-        } else {
+        } else if (activeTab === 'SHOP') {
             loadShopPrices();
+        } else if (activeTab === 'COUPONS') {
+            loadCoupons();
         }
     }, [activeTab]);
 
@@ -40,6 +102,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         const prices = await ShopService.getAllPrices();
         setShopPrices(prices);
         setLoading(false);
+    };
+
+    const loadCoupons = async () => {
+        setLoading(true);
+        const allCoupons = await CouponService.getAllCoupons();
+        setCoupons(allCoupons);
+        setLoading(false);
+    };
+
+    const handleCreateCoupon = async () => {
+        if (!newCouponCode) return alert('Digite um código para o cupom.');
+        if (newCouponDiscount <= 0 || newCouponDiscount > 100) return alert('Desconto deve ser entre 1 e 100.');
+        
+        const coupon = await CouponService.createCoupon({
+            code: newCouponCode,
+            discount_percent: newCouponDiscount,
+            max_uses: newCouponMaxUses,
+            active: true
+        });
+
+        if (coupon) {
+            setCoupons([coupon, ...coupons]);
+            setNewCouponCode('');
+            setNewCouponDiscount(10);
+            setNewCouponMaxUses(0);
+            alert('Cupom criado com sucesso!');
+        } else {
+            alert('Erro ao criar cupom. Verifique se o código já existe.');
+        }
+    };
+
+    const handleToggleCoupon = async (coupon: Coupon) => {
+        const success = await CouponService.toggleCouponStatus(coupon.id, coupon.active);
+        if (success) {
+            setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, active: !coupon.active } : c));
+        }
+    };
+
+    const handleDeleteCoupon = async (id: string) => {
+        if (confirm('Tem certeza que deseja deletar este cupom?')) {
+            const success = await CouponService.deleteCoupon(id);
+            if (success) {
+                setCoupons(prev => prev.filter(c => c.id !== id));
+            }
+        }
+    };
+
+    const handleViewReport = async (coupon: Coupon) => {
+        setSelectedCouponForReport(coupon);
+        setLoadingReport(true);
+        const uses = await CouponService.getCouponUses(coupon.id);
+        setCouponUses(uses);
+        setLoadingReport(false);
     };
 
     const handleEditPrice = (itemId: string, currentPrice: number) => {
@@ -119,6 +234,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         }
     };
 
+    const handleTogglePremium = async (profile: ProfileData) => {
+        const currentPremium = profile.account?.is_premium || false;
+        const newPremium = !currentPremium;
+        
+        // AccountService is used to update account-level data
+        const { AccountService } = await import('../services/accountService');
+        const success = await AccountService.updatePremium(profile.account_id, newPremium);
+        
+        if (success) {
+            setProfiles(prev => prev.map(p => {
+                if (p.id === profile.id) {
+                    return { ...p, account: { ...p.account, is_premium: newPremium } };
+                }
+                // Update all profiles belonging to the same account
+                if (p.account_id === profile.account_id) {
+                     return { ...p, account: { ...p.account, is_premium: newPremium } };
+                }
+                return p;
+            }));
+
+            // If the modal is open for this profile or another profile of the same account, update it too
+            if (selectedProfile && selectedProfile.account_id === profile.account_id) {
+                setSelectedProfile(prev => prev ? { ...prev, account: { ...prev.account, is_premium: newPremium } } : null);
+            }
+
+            alert(`Acesso Premium ${newPremium ? 'concedido' : 'removido'} com sucesso!`);
+        } else {
+            alert("Erro ao atualizar status premium.");
+        }
+    };
+
     const handleDeleteProfile = async () => {
         if (!selectedProfile) return;
         if (deleteConfirm !== 'DELETAR') {
@@ -165,6 +311,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                             >
                                 Loja
                             </button>
+                            <button
+                                onClick={() => setActiveTab('COUPONS')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'COUPONS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                            >
+                                Cupons
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('CREATE_USER')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'CREATE_USER' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                            >
+                                Criar Usuário
+                            </button>
                         </div>
                         <HomeButton onClick={onBack} label="Voltar" className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-none border-none hover:bg-gray-200 dark:hover:bg-gray-700" />
                     </div>
@@ -186,6 +344,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                                 <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Avatar</th>
                                                 <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Nome/ID</th>
                                                 <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Estatísticas</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Plano</th>
                                                 <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
                                                 <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Ações</th>
                                             </tr>
@@ -211,6 +370,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                                         <div className="flex gap-3 text-xs font-bold">
                                                             <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">🪙 {profile.coins}</span>
                                                             <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">⭐ {profile.points}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex flex-col gap-1">
+                                                            {profile.account?.is_premium ? (
+                                                                <span className="w-max bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase border border-indigo-200 dark:border-indigo-800">
+                                                                    Premium
+                                                                </span>
+                                                            ) : (
+                                                                <span className="w-max bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2.5 py-0.5 rounded-md text-[10px] font-black tracking-wider uppercase border border-gray-200 dark:border-gray-700">
+                                                                    Gratuito
+                                                                </span>
+                                                            )}
+                                                            <button 
+                                                                onClick={() => handleTogglePremium(profile)}
+                                                                className="w-max text-[9px] font-bold text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors uppercase tracking-widest"
+                                                            >
+                                                                Mudar Plano
+                                                            </button>
                                                         </div>
                                                     </td>
                                                     <td className="p-4">
@@ -244,7 +422,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                 </div>
                             )}
                         </div>
-                    ) : (
+                    ) : activeTab === 'SHOP' ? (
                         <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
@@ -322,7 +500,151 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                 </table>
                             </div>
                         </div>
-                    )
+                    ) : activeTab === 'COUPONS' ? (
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
+                            <div className="mb-8 bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-400 mb-4">Gerar Novo Cupom</h3>
+                                <div className="flex flex-wrap gap-4 items-end">
+                                    <div className="flex-1 min-w-[200px]">
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Código do Cupom</label>
+                                        <input type="text" value={newCouponCode} onChange={e => setNewCouponCode(e.target.value.toUpperCase())} placeholder="Ex: PROMO50" className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white uppercase" />
+                                    </div>
+                                    <div className="w-32">
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Desconto (%)</label>
+                                        <input type="number" min="1" max="100" value={newCouponDiscount} onChange={e => setNewCouponDiscount(Number(e.target.value))} className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white text-center" />
+                                    </div>
+                                    <div className="w-32">
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Lim. Usos (0=∞)</label>
+                                        <input type="number" min="0" value={newCouponMaxUses} onChange={e => setNewCouponMaxUses(Number(e.target.value))} className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white text-center" />
+                                    </div>
+                                    <button onClick={handleCreateCoupon} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all h-[42px]">
+                                        Criar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loading ? (
+                                <div className="p-10 text-center text-gray-500">Carregando cupons...</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Código</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Desconto</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Usos</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {coupons.map(coupon => (
+                                                <tr key={coupon.id} className={`border-b border-gray-50 dark:border-gray-800/50 transition-colors ${!coupon.active ? 'opacity-50' : 'hover:bg-white/50 dark:hover:bg-gray-800/50'}`}>
+                                                    <td className="p-4 font-black text-indigo-700 dark:text-indigo-400">{coupon.code}</td>
+                                                    <td className="p-4 font-bold text-gray-800 dark:text-gray-200">{coupon.discount_percent}%</td>
+                                                    <td className="p-4 font-medium text-gray-600 dark:text-gray-400">
+                                                        {coupon.times_used} / {coupon.max_uses === 0 ? '∞' : coupon.max_uses}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {coupon.active ? (
+                                                            <span className="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black tracking-wider border border-emerald-200 dark:border-emerald-900/30">ATIVO</span>
+                                                        ) : (
+                                                            <span className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-1 rounded-full text-[10px] font-black tracking-wider border border-gray-200 dark:border-gray-700">INATIVO</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                                                        <button onClick={() => handleViewReport(coupon)} className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded text-xs font-bold">
+                                                            Relatório
+                                                        </button>
+                                                        <button onClick={() => handleToggleCoupon(coupon)} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs font-bold">
+                                                            {coupon.active ? 'Desativar' : 'Ativar'}
+                                                        </button>
+                                                        <button onClick={() => handleDeleteCoupon(coupon.id)} className="px-3 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded text-xs font-bold">
+                                                            Excluir
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {coupons.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={5} className="p-8 text-center text-gray-400 font-medium">Nenhum cupom gerado ainda.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    ) : activeTab === 'CREATE_USER' ? (
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
+                            <div className="max-w-md mx-auto">
+                                <h3 className="text-2xl font-black text-gray-800 dark:text-white mb-6">Cadastrar Novo Usuário</h3>
+                                <form onSubmit={handleCreateUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">Nome Completo</label>
+                                        <input
+                                            type="text"
+                                            value={newUserName}
+                                            onChange={e => setNewUserName(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">E-mail</label>
+                                        <input
+                                            type="email"
+                                            value={newUserEmail}
+                                            onChange={e => setNewUserEmail(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">Senha</label>
+                                        <input
+                                            type="password"
+                                            value={newUserPassword}
+                                            onChange={e => setNewUserPassword(e.target.value)}
+                                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 font-bold text-gray-800 dark:text-white focus:border-indigo-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-2">
+                                        <input
+                                            type="checkbox"
+                                            id="isAdminCheck"
+                                            checked={newUserIsAdmin}
+                                            onChange={e => setNewUserIsAdmin(e.target.checked)}
+                                            className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <label htmlFor="isAdminCheck" className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                            Conceder acesso de Administrador
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-2">
+                                        <input
+                                            type="checkbox"
+                                            id="isPremiumCheck"
+                                            checked={newUserIsPremium}
+                                            onChange={e => setNewUserIsPremium(e.target.checked)}
+                                            className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <label htmlFor="isPremiumCheck" className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                            Conceder Acesso Premium Gratuito
+                                        </label>
+                                    </div>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isCreatingUser}
+                                        className="w-full mt-4 bg-indigo-600 text-white font-black text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isCreatingUser ? 'Criando Usuário...' : 'Criar Usuário'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    ) : null
                 }
 
                 {/* Modal de Gerenciamento Estendido */}
@@ -410,6 +732,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                         </div>
                                     </div>
 
+                                    {/* Seção Nova: Assinatura & Acesso */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border-b border-indigo-100 dark:border-indigo-900/30 pb-2">Assinatura & Acesso</h4>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-xl flex items-center justify-between border border-indigo-100 dark:border-indigo-900/30">
+                                            <div>
+                                                <div className="text-xs text-indigo-800 dark:text-indigo-400 font-bold uppercase mb-1">Plano Atual</div>
+                                                {selectedProfile.account?.is_premium ? (
+                                                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase shadow-sm">
+                                                        Acesso Premium
+                                                    </span>
+                                                ) : (
+                                                    <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
+                                                        Conta Gratuita
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button 
+                                                onClick={() => handleTogglePremium(selectedProfile)}
+                                                className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-md ${selectedProfile.account?.is_premium ? 'bg-white text-red-600 hover:bg-red-50 border border-red-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/20'}`}
+                                            >
+                                                {selectedProfile.account?.is_premium ? 'Revogar Premium' : 'Conceder Premium'}
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* Seção 3: Zona de Perigo */}
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-bold uppercase tracking-widest text-red-600 dark:text-red-500 border-b border-red-100 dark:border-red-900/30 pb-2">Zona de Perigo</h4>
@@ -437,6 +784,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                         </div>
                                     </div>
 
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* Modal de Relatório de Cupom */}
+                {
+                    selectedCouponForReport && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelectedCouponForReport(null)}>
+                            <div className="bg-white dark:bg-gray-900 rounded-[2rem] max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-white/10" onClick={e => e.stopPropagation()}>
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+                                    <div>
+                                        <h3 className="text-2xl font-black font-outfit text-gray-800 dark:text-white">Uso do Cupom: <span className="text-indigo-600 dark:text-indigo-400">{selectedCouponForReport.code}</span></h3>
+                                        <p className="text-xs text-gray-500 font-medium mt-1">
+                                            Utilizado {selectedCouponForReport.times_used} {selectedCouponForReport.max_uses > 0 ? `/ ${selectedCouponForReport.max_uses}` : ''} vezes
+                                        </p>
+                                    </div>
+                                    <button onClick={() => setSelectedCouponForReport(null)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
+                                </div>
+                                <div className="p-6 overflow-y-auto space-y-4 bg-white dark:bg-gray-900 flex-1">
+                                    {loadingReport ? (
+                                        <div className="p-10 text-center text-gray-500 font-bold">Carregando relatório...</div>
+                                    ) : couponUses.length === 0 ? (
+                                        <div className="p-10 text-center text-gray-400 font-medium bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                            Nenhum usuário utilizou este cupom ainda.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {couponUses.map(use => (
+                                                <div key={use.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                                                    <div>
+                                                        <div className="font-bold text-gray-800 dark:text-gray-200">{use.account?.full_name || 'Usuário Desconhecido'}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">{use.account?.email || 'Email não disponível'}</div>
+                                                    </div>
+                                                    <div className="mt-2 sm:mt-0 text-xs font-bold text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
+                                                        {new Date(use.used_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
