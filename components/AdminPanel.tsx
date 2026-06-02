@@ -4,6 +4,8 @@ import { ProfileService } from '../services/profileService';
 import { CouponService } from '../services/couponService';
 import { SHOP_ITEMS } from '../constants';
 import { ShopService, ShopItemPrice } from '../services/shopService';
+import { NoticeService } from '../services/noticeService';
+import { Notice } from '../types';
 import HomeButton from './HomeButton';
 
 interface AdminPanelProps {
@@ -14,7 +16,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [profiles, setProfiles] = useState<ProfileData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
-    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER'>('USERS');
+    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS'>('USERS');
+
+    // Avisos states
+    const [notices, setNotices] = useState<Notice[]>([]);
+    const [loadingNotices, setLoadingNotices] = useState(false);
+    const [newNoticeTitle, setNewNoticeTitle] = useState('');
+    const [newNoticeContent, setNewNoticeContent] = useState('');
+    const [isCreatingNotice, setIsCreatingNotice] = useState(false);
 
     // Create User states
     const [newUserName, setNewUserName] = useState('');
@@ -46,6 +55,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [selectedCouponForReport, setSelectedCouponForReport] = useState<Coupon | null>(null);
     const [couponUses, setCouponUses] = useState<CouponUse[]>([]);
     const [loadingReport, setLoadingReport] = useState(false);
+
+    // Revenue states
+    const [revenueData, setRevenueData] = useState<{ totalRevenue: number; transactionsCount: number; items: any[] } | null>(null);
+    const [revenueMonth, setRevenueMonth] = useState<number>(new Date().getMonth() + 1);
+    const [revenueYear, setRevenueYear] = useState<number>(new Date().getFullYear());
+    const [loadingRevenue, setLoadingRevenue] = useState(false);
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,8 +109,82 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             loadShopPrices();
         } else if (activeTab === 'COUPONS') {
             loadCoupons();
+        } else if (activeTab === 'FATURAMENTO') {
+            loadRevenue();
+        } else if (activeTab === 'AVISOS') {
+            loadNotices();
         }
-    }, [activeTab]);
+    }, [activeTab, revenueMonth, revenueYear]);
+
+    const loadNotices = async () => {
+        setLoadingNotices(true);
+        try {
+            const data = await NoticeService.getAllNotices();
+            setNotices(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingNotices(false);
+        }
+    };
+
+    const handleCreateNotice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newNoticeTitle || !newNoticeContent) {
+            alert('Preencha título e conteúdo!');
+            return;
+        }
+
+        setIsCreatingNotice(true);
+        try {
+            const notice = await NoticeService.createNotice({
+                title: newNoticeTitle,
+                content: newNoticeContent,
+                active: true
+            });
+            if (notice) {
+                alert('Aviso criado com sucesso!');
+                setNewNoticeTitle('');
+                setNewNoticeContent('');
+                loadNotices();
+            } else {
+                alert('Erro ao criar aviso. Verifique se a tabela "notices" existe no Supabase.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro inesperado ao criar aviso.');
+        } finally {
+            setIsCreatingNotice(false);
+        }
+    };
+
+    const toggleNoticeStatus = async (id: string, currentStatus: boolean) => {
+        const success = await NoticeService.toggleNoticeStatus(id, !currentStatus);
+        if (success) loadNotices();
+    };
+
+    const handleDeleteNotice = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja deletar este aviso?')) return;
+        const success = await NoticeService.deleteNotice(id);
+        if (success) loadNotices();
+    };
+
+    const loadRevenue = async () => {
+        setLoadingRevenue(true);
+        try {
+            const res = await fetch(`/api/admin/revenue?month=${revenueMonth}&year=${revenueYear}`);
+            const data = await res.json();
+            if (res.ok) {
+                setRevenueData(data);
+            } else {
+                alert(data.error || 'Erro ao carregar faturamento');
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingRevenue(false);
+        }
+    };
 
     const loadShopPrices = async () => {
         setLoading(true);
@@ -316,6 +405,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'COUPONS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                             >
                                 Cupons
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('FATURAMENTO')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'FATURAMENTO' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                            >
+                                Faturamento
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('AVISOS')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'AVISOS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                            >
+                                Avisos
                             </button>
                             <button
                                 onClick={() => setActiveTab('CREATE_USER')}
@@ -642,6 +743,194 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                         {isCreatingUser ? 'Criando Usuário...' : 'Criar Usuário'}
                                     </button>
                                 </form>
+                            </div>
+                        </div>
+                    ) : activeTab === 'FATURAMENTO' ? (
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
+                            <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+                                <h3 className="text-2xl font-black text-gray-800 dark:text-white">Faturamento Mensal</h3>
+                                <div className="flex items-center gap-2">
+                                    <select 
+                                        value={revenueMonth} 
+                                        onChange={(e) => setRevenueMonth(Number(e.target.value))}
+                                        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white outline-none"
+                                    >
+                                        <option value={1}>Janeiro</option>
+                                        <option value={2}>Fevereiro</option>
+                                        <option value={3}>Março</option>
+                                        <option value={4}>Abril</option>
+                                        <option value={5}>Maio</option>
+                                        <option value={6}>Junho</option>
+                                        <option value={7}>Julho</option>
+                                        <option value={8}>Agosto</option>
+                                        <option value={9}>Setembro</option>
+                                        <option value={10}>Outubro</option>
+                                        <option value={11}>Novembro</option>
+                                        <option value={12}>Dezembro</option>
+                                    </select>
+                                    <select 
+                                        value={revenueYear} 
+                                        onChange={(e) => setRevenueYear(Number(e.target.value))}
+                                        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white outline-none"
+                                    >
+                                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                                            <option key={year} value={year}>{year}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {loadingRevenue ? (
+                                <div className="p-20 text-center text-gray-500 flex flex-col items-center">
+                                    <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                    <p className="font-bold">Calculando faturamento no Mercado Pago...</p>
+                                </div>
+                            ) : revenueData ? (
+                                <div className="space-y-6">
+                                    {/* Cards de Resumo */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg shadow-emerald-500/20 text-white flex flex-col items-center justify-center">
+                                            <span className="text-emerald-100 font-bold uppercase tracking-widest text-sm mb-2">Total Recebido</span>
+                                            <span className="text-4xl font-black">
+                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(revenueData.totalRevenue)}
+                                            </span>
+                                        </div>
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 rounded-2xl shadow-sm text-gray-800 dark:text-gray-200 flex flex-col items-center justify-center">
+                                            <span className="text-gray-400 font-bold uppercase tracking-widest text-sm mb-2">Transações Aprovadas</span>
+                                            <span className="text-4xl font-black text-indigo-600 dark:text-indigo-400">
+                                                {revenueData.transactionsCount}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Lista de Transações */}
+                                    <div className="mt-8 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden bg-white/50 dark:bg-gray-800/20">
+                                        <h4 className="font-bold text-gray-700 dark:text-gray-300 p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">Últimas Transações do Mês</h4>
+                                        {revenueData.items.length === 0 ? (
+                                            <div className="p-8 text-center text-gray-400 font-medium">Nenhuma transação registrada neste mês.</div>
+                                        ) : (
+                                            <div className="max-h-96 overflow-y-auto">
+                                                <table className="w-full text-left border-collapse text-sm">
+                                                    <thead>
+                                                        <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-gray-900/50">
+                                                            <th className="p-3">Data</th>
+                                                            <th className="p-3">Email do Pagador</th>
+                                                            <th className="p-3">Método</th>
+                                                            <th className="p-3 text-right">Valor</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {revenueData.items.map((item, idx) => (
+                                                            <tr key={idx} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/80 dark:hover:bg-gray-800/50">
+                                                                <td className="p-3 text-gray-600 dark:text-gray-400">
+                                                                    {new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                </td>
+                                                                <td className="p-3 font-medium text-gray-800 dark:text-gray-200">
+                                                                    {item.email}
+                                                                </td>
+                                                                <td className="p-3 text-gray-500 font-bold uppercase text-[10px]">
+                                                                    {item.payment_method}
+                                                                </td>
+                                                                <td className="p-3 text-right font-black text-emerald-600 dark:text-emerald-400">
+                                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : activeTab === 'AVISOS' ? (
+                        <div className="space-y-8 animate-in fade-in">
+                            <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-8 shadow-xl border border-white/50 dark:border-gray-800/50">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-3">
+                                    <span className="text-3xl">📢</span> Novo Aviso
+                                </h2>
+                                <form onSubmit={handleCreateNotice} className="space-y-6 max-w-2xl">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Título do Aviso</label>
+                                        <input
+                                            type="text"
+                                            value={newNoticeTitle}
+                                            onChange={(e) => setNewNoticeTitle(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                                            placeholder="Ex: Nova atualização chegou!"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Conteúdo / Mensagem</label>
+                                        <textarea
+                                            value={newNoticeContent}
+                                            onChange={(e) => setNewNoticeContent(e.target.value)}
+                                            rows={4}
+                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none"
+                                            placeholder="Descreva as novidades..."
+                                            required
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={isCreatingNotice}
+                                        className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto shadow-lg shadow-indigo-500/20"
+                                    >
+                                        {isCreatingNotice ? 'Criando...' : 'Publicar Aviso'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-8 shadow-xl border border-white/50 dark:border-gray-800/50">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Avisos Publicados</h2>
+                                {loadingNotices ? (
+                                    <div className="text-center py-10 text-gray-500">Carregando avisos...</div>
+                                ) : notices.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                        Nenhum aviso publicado ainda.
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-4">
+                                        {notices.map(notice => (
+                                            <div key={notice.id} className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">{notice.title}</h3>
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${notice.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                                                            {notice.active ? 'Ativo (Visível)' : 'Inativo'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-gray-600 dark:text-gray-300">{notice.content}</p>
+                                                    {notice.created_at && (
+                                                        <p className="text-xs text-gray-400 mt-2 font-mono">
+                                                            Criado em: {new Date(notice.created_at).toLocaleString('pt-BR')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 w-full md:w-auto">
+                                                    <button
+                                                        onClick={() => toggleNoticeStatus(notice.id, notice.active)}
+                                                        className={`flex-1 md:flex-none px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                                                            notice.active 
+                                                                ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40' 
+                                                                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40'
+                                                        }`}
+                                                    >
+                                                        {notice.active ? 'Desativar' : 'Ativar'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteNotice(notice.id)}
+                                                        className="flex-1 md:flex-none px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40 rounded-lg font-bold text-sm transition-all"
+                                                    >
+                                                        Excluir
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : null

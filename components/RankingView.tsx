@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ProfileData } from '../types';
 import { PROFILE_CONFIGS, REWARD_LEVELS } from '../constants';
@@ -11,24 +10,90 @@ interface RankingViewProps {
   onBack: () => void;
 }
 
-const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, currentProfileId, onBack }) => {
-  const [profiles, setProfiles] = useState<ProfileData[]>(initialProfiles);
-  const [loading, setLoading] = useState(true);
+const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-  // Buscar perfis frescos do Supabase
+const RankingRow = ({
+  profile,
+  position,
+  currentProfileId,
+}: {
+  profile: ProfileData;
+  position: number;
+  currentProfileId: string | null;
+}) => {
+  const isMe = profile.id === currentProfileId;
+  const medal = MEDAL[position];
+  const profileType = (profile as any).profile_type ?? (profile as any).type;
+
+  return (
+    <div
+      className={`flex items-center justify-between p-5 transition-colors ${
+        isMe ? 'bg-indigo-50/70 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-900/40'
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        {/* Position */}
+        <div className={`w-10 text-center font-black ${medal ? 'text-2xl' : 'text-gray-300 dark:text-gray-600 text-base'}`}>
+          {medal || `#${position}`}
+        </div>
+
+        {/* Avatar */}
+        <div
+          className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm overflow-hidden ${
+            PROFILE_CONFIGS[profileType]?.color || 'bg-gray-100'
+          }`}
+        >
+          {profile.avatar && profile.avatar.startsWith('data:') ? (
+            <img src={profile.avatar} className="w-full h-full object-cover" alt="" />
+          ) : (
+            profile.avatar || PROFILE_CONFIGS[profileType]?.icon || '👤'
+          )}
+        </div>
+
+        {/* Name + stats */}
+        <div>
+          <span className={`font-black text-base block leading-none ${
+            isMe ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-800 dark:text-white'
+          }`}>
+            {profile.name}
+          </span>
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+            {profile.points?.toLocaleString('pt-BR')} pontos
+            {profile.streak ? ` • 🔥 ${profile.streak}` : ''}
+          </span>
+        </div>
+      </div>
+
+      {isMe && (
+        <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase">
+          Você
+        </span>
+      )}
+    </div>
+  );
+};
+
+const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, currentProfileId, onBack }) => {
+  const [familyProfiles, setFamilyProfiles] = useState<ProfileData[]>(initialProfiles);
+  const [globalProfiles, setGlobalProfiles] = useState<ProfileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'family' | 'global'>('family');
+
+  // Buscar perfis da família
   useEffect(() => {
-    const fetchProfiles = async () => {
+    const fetchFamily = async () => {
       setLoading(true);
       try {
         const session = await AuthService.getCurrentSession();
         if (session?.user) {
           const supabaseProfiles = await ProfileService.getProfiles(session.user.id);
-          
-          // Converter para formato local
-          const formattedProfiles: ProfileData[] = supabaseProfiles.map(sp => ({
+          const formatted: ProfileData[] = supabaseProfiles.map(sp => ({
             id: sp.id,
+            account_id: sp.account_id,
             name: sp.name,
             type: sp.profile_type,
+            profile_type: sp.profile_type,
             avatar: sp.avatar || undefined,
             bio: sp.bio || undefined,
             points: sp.points,
@@ -39,46 +104,60 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
             lastArtDate: sp.last_art_date,
             lastVideoDate: sp.last_video_date,
             favorites: sp.favorites,
-            gallery: sp.gallery,
             recordings: sp.recordings,
             paintings: sp.paintings,
             artMissionTheme: sp.art_mission_theme || undefined,
             is_admin: sp.is_admin,
             is_blocked: sp.is_blocked,
           }));
-          
-          setProfiles(formattedProfiles);
+          setFamilyProfiles(formatted);
         } else {
-          // Fallback para dados locais se não houver sessão
-          setProfiles(initialProfiles);
+          setFamilyProfiles(initialProfiles);
         }
       } catch (error) {
-        console.error('Erro ao buscar perfis do ranking:', error);
-        // Em caso de erro, usar dados locais
-        setProfiles(initialProfiles);
+        console.error('Erro ao buscar perfis da família:', error);
+        setFamilyProfiles(initialProfiles);
       } finally {
         setLoading(false);
       }
     };
+    fetchFamily();
+  }, []);
 
-    fetchProfiles();
-  }, [initialProfiles]);
+  // Buscar ranking global somente quando a aba for aberta (lazy)
+  useEffect(() => {
+    if (activeTab !== 'global') return;
+    if (globalProfiles.length > 0) return;
 
-  const currentProfile = profiles.find(p => p.id === currentProfileId);
+    const fetchGlobal = async () => {
+      setLoadingGlobal(true);
+      try {
+        const data = await ProfileService.getGlobalRanking(50);
+        setGlobalProfiles(data);
+      } catch (e) {
+        console.error('Erro ao buscar ranking global:', e);
+      } finally {
+        setLoadingGlobal(false);
+      }
+    };
+    fetchGlobal();
+  }, [activeTab]);
+
+  const currentProfile = familyProfiles.find(p => p.id === currentProfileId);
   const userPoints = currentProfile?.points || 0;
-
-  // Ordena os perfis para o ranking familiar na parte inferior
-  const sortedProfiles = [...profiles].sort((a, b) => (b.points || 0) - (a.points || 0));
-
+  const sortedFamily = [...familyProfiles].sort((a, b) => (b.points || 0) - (a.points || 0));
   const currentLevelInfo = [...REWARD_LEVELS].reverse().find(l => userPoints >= l.points) || REWARD_LEVELS[0];
   const nextLevel = REWARD_LEVELS.find(l => l.points > userPoints);
-
   const progressToNext = nextLevel
     ? ((userPoints - currentLevelInfo.points) / (nextLevel.points - currentLevelInfo.points)) * 100
     : 100;
 
+  // Posição do usuário no ranking global
+  const myGlobalPosition = globalProfiles.findIndex(p => p.id === currentProfileId) + 1;
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto mb-20 space-y-12 animate-in fade-in duration-500">
+
       {/* HEADER: STATUS ATUAL */}
       <div className="text-center space-y-4 relative">
         <button
@@ -89,8 +168,7 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
         </button>
         <h2 className="text-4xl md:text-5xl font-black font-outfit text-indigo-900 dark:text-indigo-400">Jornada da Fé ✨</h2>
         <p className="text-gray-500 dark:text-gray-400 font-medium">Continue cumprindo missões para subir de nível e brilhar!</p>
-        
-        {/* Loading state */}
+
         {loading && (
           <div className="flex justify-center items-center gap-2 text-indigo-600 dark:text-indigo-400">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
@@ -98,7 +176,8 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-[3rem] shadow-xl border-4 border-indigo-50 dark:border-gray-700 mt-8 relative overflow-hidden"
+        <div
+          className="bg-white dark:bg-gray-800 p-8 rounded-[3rem] shadow-xl border-4 border-indigo-50 dark:border-gray-700 mt-8 relative overflow-hidden"
           style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.3s' }}
         >
           <div className="absolute top-0 right-0 p-8 text-9xl opacity-5 rotate-12">{currentLevelInfo.icon}</div>
@@ -130,33 +209,36 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
       <div className="space-y-6">
         <h3 className="text-2xl font-black font-outfit text-gray-800 dark:text-white px-4">Marcos da Caminhada 👣</h3>
         <div className="grid gap-4">
-          {REWARD_LEVELS.map((lvl, index) => {
+          {REWARD_LEVELS.map((lvl) => {
             const isUnlocked = userPoints >= lvl.points;
             const isCurrent = currentLevelInfo.level === lvl.level;
-
             return (
               <div
                 key={lvl.level}
-                className={`relative flex items-center p-6 rounded-[2.5rem] border-4 transition-all ${isUnlocked
+                className={`relative flex items-center p-6 rounded-[2.5rem] border-4 transition-all ${
+                  isUnlocked
                     ? 'bg-white dark:bg-gray-800 border-indigo-100 dark:border-indigo-900/40 shadow-md'
                     : 'bg-gray-50 dark:bg-gray-900/50 border-transparent opacity-60 grayscale'
-                  } ${isCurrent ? 'ring-4 ring-indigo-500 ring-offset-4 dark:ring-offset-gray-900' : ''}`}
+                } ${isCurrent ? 'ring-4 ring-indigo-500 ring-offset-4 dark:ring-offset-gray-900' : ''}`}
               >
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner ${isUnlocked ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-gray-200 dark:bg-gray-800'
-                  }`}>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner ${
+                  isUnlocked ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-gray-200 dark:bg-gray-800'
+                }`}>
                   {lvl.icon}
                 </div>
-
                 <div className="ml-6 flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className={`font-black text-lg ${isUnlocked ? 'text-gray-800 dark:text-white' : 'text-gray-400'}`}>
                       {lvl.title}
                     </h4>
-                    {isUnlocked && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-black uppercase">Desbloqueado</span>}
+                    {isUnlocked && (
+                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-black uppercase">
+                        Desbloqueado
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Nível {lvl.level} • {lvl.points} Pontos</p>
                 </div>
-
                 <div className="text-right">
                   {isUnlocked ? (
                     <span className="text-2xl">✅</span>
@@ -173,42 +255,82 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
         </div>
       </div>
 
-      {/* RANKING FAMILIAR (LISTA INFERIOR) */}
-      <div className="space-y-6 pt-8">
-        <h3 className="text-2xl font-black font-outfit text-gray-800 dark:text-white px-4">Mural da Família 🏠</h3>
-        <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-          <div className="divide-y divide-gray-50 dark:divide-gray-750">
-            {sortedProfiles.map((profile, index) => {
-              const isMe = profile.id === currentProfileId;
-              const position = index + 1;
+      {/* MURAL DA FAMÍLIA COM ABAS */}
+      <div className="space-y-5 pt-4">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-2xl font-black font-outfit text-gray-800 dark:text-white">Mural da Família 🏠</h3>
+          {myGlobalPosition > 0 && activeTab === 'global' && (
+            <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-full font-bold">
+              Você é #{myGlobalPosition} global 🌍
+            </span>
+          )}
+        </div>
 
-              return (
-                <div
+        {/* Tabs */}
+        <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-2xl gap-1">
+          <button
+            onClick={() => setActiveTab('family')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${
+              activeTab === 'family'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            🏠 Família
+          </button>
+          <button
+            onClick={() => setActiveTab('global')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all ${
+              activeTab === 'global'
+                ? 'bg-white dark:bg-gray-700 shadow-md text-indigo-600 dark:text-indigo-400'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            🌍 Global
+          </button>
+        </div>
+
+        {/* Ranking List */}
+        <div className="bg-white dark:bg-gray-800 rounded-[3rem] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+          {activeTab === 'family' ? (
+            loading ? (
+              <div className="flex justify-center items-center gap-3 p-12 text-gray-400">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400"></div>
+                <span className="font-bold">Carregando...</span>
+              </div>
+            ) : sortedFamily.length === 0 ? (
+              <div className="p-12 text-center text-gray-400 font-bold">Nenhum membro encontrado.</div>
+            ) : (
+              <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                {sortedFamily.map((profile, index) => (
+                  <RankingRow
+                    key={profile.id}
+                    profile={profile}
+                    position={index + 1}
+                    currentProfileId={currentProfileId}
+                  />
+                ))}
+              </div>
+            )
+          ) : loadingGlobal ? (
+            <div className="flex justify-center items-center gap-3 p-12 text-gray-400">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400"></div>
+              <span className="font-bold">Carregando ranking global...</span>
+            </div>
+          ) : globalProfiles.length === 0 ? (
+            <div className="p-12 text-center text-gray-400 font-bold">Nenhum dado disponível.</div>
+          ) : (
+            <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+              {globalProfiles.map((profile, index) => (
+                <RankingRow
                   key={profile.id}
-                  className={`flex items-center justify-between p-6 transition-colors ${isMe ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-900/40'
-                    }`}
-                >
-                  <div className="flex items-center space-x-5">
-                    <span className={`w-8 text-center font-black text-lg ${position <= 3 ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-300'}`}>
-                      #{position}
-                    </span>
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${PROFILE_CONFIGS[profile.type].color}`}>
-                      {profile.avatar && profile.avatar.startsWith('data:') ? (
-                        <img src={profile.avatar} className="w-full h-full object-cover rounded-xl" alt="" />
-                      ) : (
-                        profile.avatar || PROFILE_CONFIGS[profile.type].icon
-                      )}
-                    </div>
-                    <div>
-                      <span className="font-black text-gray-800 dark:text-white text-base block leading-none">{profile.name}</span>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{profile.points} Pontos</span>
-                    </div>
-                  </div>
-                  {isMe && <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase">Você</span>}
-                </div>
-              );
-            })}
-          </div>
+                  profile={profile}
+                  position={index + 1}
+                  currentProfileId={currentProfileId}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

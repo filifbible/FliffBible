@@ -181,6 +181,16 @@ export interface CardData {
 
 export type AppScreen = 'LANDING' | 'AUTH' | 'RESET_PASSWORD' | 'HOME' | 'BIBLE' | 'ACTIVITIES' | 'PROFILE' | 'PICKER' | 'CHALLENGES' | 'SHOP' | 'REWARDS' | 'GALLERY' | 'READING' | 'ART_MISSION' | 'CAPTURE' | 'GAMES' | 'RANKING' | 'ADMIN_PANEL' | 'SUBSCRIPTION';
 
+// ── Avisos ────────────────────────────────────────────────────────────────────
+
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  active: boolean;
+  created_at?: string;
+}
+
 // ── Conta ─────────────────────────────────────────────────────────────────────
 
 /** Conta de usuário (tabela: accounts) */

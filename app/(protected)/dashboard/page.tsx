@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/services/supabase';
 import { ProfileService } from '@/services/profileService';
-import { ProfileData, ProfileType } from '@/types';
+import { ProfileData, ProfileType, Notice } from '@/types';
+import { NoticeService } from '@/services/noticeService';
 import { PROFILE_CONFIGS } from '@/constants';
 import { generateDailyDevotional } from '@/services/geminiService';
 import { CommandBus } from '@/commands/command-bus';
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [devotional, setDevotional] = useState<any>(null);
   const [loadingDevo, setLoadingDevo] = useState(false);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
@@ -59,6 +61,9 @@ export default function DashboardPage() {
         is_admin: data.is_admin, is_blocked: data.is_blocked,
       };
       setProfile(p);
+
+      // Carrega avisos ativos
+      NoticeService.getActiveNotices().then(setNotices).catch(console.error);
 
       // Carrega devocional
       if (!devotional) {
@@ -104,6 +109,21 @@ export default function DashboardPage() {
       onLogout={handleLogout}
     >
       <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
+
+        {/* Quadro de Avisos Discreto */}
+        {notices.length > 0 && (
+          <div className="flex flex-col gap-2 w-full -mb-4">
+            {notices.map(notice => (
+              <div key={notice.id} className="bg-indigo-50/80 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30 rounded-2xl p-3 px-5 flex items-start sm:items-center gap-3 shadow-sm">
+                <span className="text-indigo-500 dark:text-indigo-400 text-lg">📢</span>
+                <div className="flex-1">
+                  <h3 className="font-bold text-indigo-900 dark:text-indigo-300 text-sm leading-tight">{notice.title}</h3>
+                  <p className="text-indigo-700/80 dark:text-indigo-400/80 text-xs mt-0.5">{notice.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Header com Avatar e Nome */}
         <div className="flex items-center justify-between">

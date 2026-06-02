@@ -76,6 +76,48 @@ export const ProfileService = {
   },
 
   /**
+   * Obtém ranking global (top 50 perfis de toda a plataforma)
+   */
+  async getGlobalRanking(limit = 50): Promise<ProfileData[]> {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, account_id, name, profile_type, avatar, points, coins, streak, is_admin')
+      .order('points', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Erro ao buscar ranking global:', error);
+      return [];
+    }
+
+    return (data || []).map(p => ({
+      id: p.id,
+      account_id: p.account_id,
+      name: p.name,
+      profile_type: p.profile_type,
+      user_type: 'child' as any,
+      avatar: p.avatar,
+      bio: null,
+      points: p.points,
+      coins: p.coins,
+      streak: p.streak,
+      last_challenge_date: null,
+      last_art_date: null,
+      last_video_date: null,
+      unlocked_items: [],
+      favorites: [],
+      recordings: [],
+      paintings: [],
+      art_mission_theme: null,
+      created_at: '',
+      updated_at: '',
+      is_admin: p.is_admin,
+    }));
+  },
+
+  /**
    * Obtém todos os perfis de uma conta
    */
   async getProfiles(accountId: string): Promise<ProfileData[]> {
