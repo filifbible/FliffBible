@@ -49,6 +49,7 @@ export default function DashboardPage() {
 
       const p: ProfileData = {
         id: data.id, name: data.name,
+        account_id: data.account_id,
         type: (data.profile_type as ProfileType) ?? ProfileType.ADULTS,
         avatar: data.avatar ?? undefined,
         bio: data.bio ?? undefined,

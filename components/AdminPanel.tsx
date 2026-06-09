@@ -6,6 +6,8 @@ import { SHOP_ITEMS } from '../constants';
 import { ShopService, ShopItemPrice } from '../services/shopService';
 import { NoticeService } from '../services/noticeService';
 import { Notice } from '../types';
+import { AdminLogService, AdminLog } from '../services/adminLogService';
+import { MaintenanceService, MaintenanceSettings } from '../services/maintenanceService';
 import HomeButton from './HomeButton';
 
 interface AdminPanelProps {
@@ -16,7 +18,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [profiles, setProfiles] = useState<ProfileData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
-    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS'>('USERS');
+    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS' | 'LOGS' | 'MANUTENCAO'>('USERS');
+
+    // Logs states
+    const [logs, setLogs] = useState<AdminLog[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+
+    // Admin identity (for logs)
+    const [adminName, setAdminName] = useState('Admin');
+    const [adminProfileId, setAdminProfileId] = useState('');
 
     // Avisos states
     const [notices, setNotices] = useState<Notice[]>([]);
@@ -61,6 +71,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [revenueMonth, setRevenueMonth] = useState<number>(new Date().getMonth() + 1);
     const [revenueYear, setRevenueYear] = useState<number>(new Date().getFullYear());
     const [loadingRevenue, setLoadingRevenue] = useState(false);
+
+    // Maintenance states
+    const [maintenanceSettings, setMaintenanceSettings] = useState<MaintenanceSettings>({
+        is_active: false,
+        message: 'Estamos realizando melhorias para oferecer uma experiência ainda melhor. Voltaremos em breve!',
+        title: 'Sistema em Manutenção',
+        estimated_return: null,
+    });
+    const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+    const [savingMaintenance, setSavingMaintenance] = useState(false);
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -113,8 +133,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             loadRevenue();
         } else if (activeTab === 'AVISOS') {
             loadNotices();
+        } else if (activeTab === 'LOGS') {
+            loadLogs();
+        } else if (activeTab === 'MANUTENCAO') {
+            loadMaintenance();
         }
     }, [activeTab, revenueMonth, revenueYear]);
+
+    const loadMaintenance = async () => {
+        setLoadingMaintenance(true);
+        try {
+            const settings = await MaintenanceService.getSettings();
+            setMaintenanceSettings(settings);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingMaintenance(false);
+        }
+    };
+
+    const handleSaveMaintenance = async () => {
+        setSavingMaintenance(true);
+        try {
+            const success = await MaintenanceService.updateSettings(maintenanceSettings);
+            if (success) {
+                alert(`Modo de manutenção ${maintenanceSettings.is_active ? 'ATIVADO' : 'DESATIVADO'} com sucesso!`);
+            } else {
+                alert('Erro ao salvar configurações. Verifique se a tabela "app_settings" existe no Supabase.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro inesperado ao salvar.');
+        } finally {
+            setSavingMaintenance(false);
+        }
+    };
+
+    const loadLogs = async () => {
+        setLoadingLogs(true);
+        try {
+            const data = await AdminLogService.getLogs(200);
+            setLogs(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingLogs(false);
+        }
+    };
 
     const loadNotices = async () => {
         setLoadingNotices(true);
@@ -315,11 +380,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
     const handleToggleBlock = async (profile: ProfileData) => {
         const newStatus = !profile.is_blocked;
+        const action = newStatus ? 'BLOCK_USER' : 'UNBLOCK_USER';
+        const label = newStatus ? 'Bloqueou' : 'Desbloqueou';
+
         const success = await ProfileService.updateProfileStatus(profile.id, { is_blocked: newStatus });
         if (success) {
             setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, is_blocked: newStatus } : p));
+            // Log da ação
+            AdminLogService.addLog({
+                adminProfileId: adminProfileId || 'unknown',
+                adminName: adminName,
+                action,
+                targetProfileId: profile.id,
+                targetName: profile.name,
+                details: `${label} o perfil "${profile.name}"`,
+            });
         } else {
-            alert("Erro ao atualizar status.");
+            alert('Erro ao atualizar status. Verifique se a coluna "is_blocked" existe na tabela "profiles" no Supabase.');
         }
     };
 
@@ -419,10 +496,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                 Avisos
                             </button>
                             <button
+                                onClick={() => setActiveTab('LOGS')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'LOGS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                            >
+                                Logs
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('CREATE_USER')}
                                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'CREATE_USER' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                             >
                                 Criar Usuário
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('MANUTENCAO')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${
+                                    activeTab === 'MANUTENCAO'
+                                        ? 'bg-white dark:bg-gray-700 shadow-sm text-orange-600'
+                                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                }`}
+                            >
+                                {maintenanceSettings.is_active && (
+                                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                                )}
+                                Manutenção
                             </button>
                         </div>
                         <HomeButton onClick={onBack} label="Voltar" className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-none border-none hover:bg-gray-200 dark:hover:bg-gray-700" />
@@ -933,8 +1029,213 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                 )}
                             </div>
                         </div>
+                    ) : activeTab === 'MANUTENCAO' ? (
+                        <div className="space-y-8 animate-in fade-in">
+                            {/* Status Banner */}
+                            <div className={`p-6 rounded-[2rem] border-2 flex items-center gap-5 transition-all duration-500 ${
+                                maintenanceSettings.is_active
+                                    ? 'bg-orange-500/10 border-orange-500/40 dark:bg-orange-500/10'
+                                    : 'bg-emerald-500/10 border-emerald-500/40 dark:bg-emerald-500/10'
+                            }`}>
+                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 ${
+                                    maintenanceSettings.is_active ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'
+                                }`}>
+                                    {maintenanceSettings.is_active ? '🔧' : '✅'}
+                                </div>
+                                <div className="flex-1">
+                                    <p className={`text-xl font-black ${
+                                        maintenanceSettings.is_active ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'
+                                    }`}>
+                                        {maintenanceSettings.is_active ? 'Modo de Manutenção ATIVO' : 'Sistema Operacional'}
+                                    </p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm font-medium mt-0.5">
+                                        {maintenanceSettings.is_active
+                                            ? 'Todos os usuários estão sendo redirecionados para a página de manutenção.'
+                                            : 'O sistema está funcionando normalmente. Nenhum usuário está sendo bloqueado.'}
+                                    </p>
+                                    {maintenanceSettings.updated_at && (
+                                        <p className="text-xs text-gray-400 mt-1 font-mono">
+                                            Última atualização: {new Date(maintenanceSettings.updated_at).toLocaleString('pt-BR')}
+                                        </p>
+                                    )}
+                                </div>
+                                {/* Master Toggle */}
+                                <button
+                                    onClick={() => setMaintenanceSettings(prev => ({ ...prev, is_active: !prev.is_active }))}
+                                    className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-300 focus:outline-none flex-shrink-0 ${
+                                        maintenanceSettings.is_active ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'
+                                    }`}
+                                    title={maintenanceSettings.is_active ? 'Desativar manutenção' : 'Ativar manutenção'}
+                                >
+                                    <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+                                        maintenanceSettings.is_active ? 'translate-x-9' : 'translate-x-1'
+                                    }`} />
+                                </button>
+                            </div>
+
+                            {/* Configuration Panel */}
+                            <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-8 shadow-xl border border-white/50 dark:border-gray-800/50">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-3">
+                                    <span className="text-3xl">⚙️</span> Configurar Mensagem
+                                </h2>
+
+                                {loadingMaintenance ? (
+                                    <div className="flex justify-center items-center gap-3 py-10 text-gray-400">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-400" />
+                                        <span className="font-bold">Carregando configurações...</span>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6 max-w-2xl">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                                Título da Página de Manutenção
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={maintenanceSettings.title}
+                                                onChange={(e) => setMaintenanceSettings(prev => ({ ...prev, title: e.target.value }))}
+                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all font-bold"
+                                                placeholder="Ex: Sistema em Manutenção"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                                Mensagem para os Usuários
+                                            </label>
+                                            <textarea
+                                                value={maintenanceSettings.message}
+                                                onChange={(e) => setMaintenanceSettings(prev => ({ ...prev, message: e.target.value }))}
+                                                rows={4}
+                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none"
+                                                placeholder="Explique o motivo da manutenção e quando o sistema voltará..."
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                                Previsão de Retorno <span className="text-gray-400 font-normal">(opcional)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={maintenanceSettings.estimated_return ?? ''}
+                                                onChange={(e) => setMaintenanceSettings(prev => ({ ...prev, estimated_return: e.target.value || null }))}
+                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+                                                placeholder="Ex: 08/06/2026 às 18h00"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1.5">Este texto é exibido na página de manutenção como previsão de retorno.</p>
+                                        </div>
+
+                                        {/* Preview */}
+                                        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-700">
+                                            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Pré-visualização</p>
+                                            <p className="text-white font-black text-lg">{maintenanceSettings.title || '—'}</p>
+                                            <p className="text-gray-300 text-sm mt-1">{maintenanceSettings.message || '—'}</p>
+                                            {maintenanceSettings.estimated_return && (
+                                                <div className="mt-3 inline-block bg-indigo-900/40 border border-indigo-700/50 px-4 py-2 rounded-xl">
+                                                    <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">Previsão de Retorno</p>
+                                                    <p className="text-white font-black">{maintenanceSettings.estimated_return}</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            onClick={handleSaveMaintenance}
+                                            disabled={savingMaintenance}
+                                            className={`w-full py-4 rounded-xl font-black text-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] ${
+                                                maintenanceSettings.is_active
+                                                    ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/30'
+                                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30'
+                                            }`}
+                                        >
+                                            {savingMaintenance
+                                                ? 'Salvando...'
+                                                : maintenanceSettings.is_active
+                                                    ? '🔧 Salvar e Ativar Manutenção'
+                                                    : '✅ Salvar e Manter Sistema Online'
+                                            }
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Warning box */}
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-5 flex gap-4 items-start">
+                                <span className="text-2xl flex-shrink-0">⚠️</span>
+                                <div>
+                                    <p className="font-bold text-amber-800 dark:text-amber-300 mb-1">Importante</p>
+                                    <ul className="text-sm text-amber-700 dark:text-amber-400 space-y-1 list-disc list-inside">
+                                        <li>Quando ativo, <strong>todos os usuários</strong> serão redirecionados para a página de manutenção.</li>
+                                        <li>O <strong>Painel Admin</strong> permanece acessível mesmo com manutenção ativa.</li>
+                                        <li>A página de manutenção é acessível diretamente em <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">/manutencao</code>.</li>
+                                        <li>Clique em <strong>Salvar</strong> para aplicar as alterações imediatamente.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     ) : null
                 }
+
+                {activeTab === 'LOGS' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-8 shadow-xl border border-white/50 dark:border-gray-800/50">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
+                                    <span className="text-3xl">📜</span> Logs de Atividade
+                                </h2>
+                                <button
+                                    onClick={loadLogs}
+                                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all"
+                                >
+                                    Atualizar
+                                </button>
+                            </div>
+                            {loadingLogs ? (
+                                <div className="flex justify-center items-center gap-3 py-16 text-gray-400">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400"></div>
+                                    <span className="font-bold">Carregando logs...</span>
+                                </div>
+                            ) : logs.length === 0 ? (
+                                <div className="text-center py-16 text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                    <span className="text-4xl block mb-3">💭</span>
+                                    Nenhuma atividade registrada ainda.
+                                </div>
+                            ) : (
+                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                                    {logs.map(log => {
+                                        const actionConfig: Record<string, { icon: string; color: string; label: string }> = {
+                                            BLOCK_USER:    { icon: '🔒', color: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/30', label: 'Bloqueou usuário' },
+                                            UNBLOCK_USER:  { icon: '🔓', color: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/30', label: 'Desbloqueou usuário' },
+                                            CREATE_NOTICE: { icon: '📢', color: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/30', label: 'Criou aviso' },
+                                            DELETE_NOTICE: { icon: '🗑️', color: 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800/30', label: 'Removeu aviso' },
+                                        };
+                                        const cfg = actionConfig[log.action] ?? { icon: 'ℹ️', color: 'bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700', label: log.action };
+                                        return (
+                                            <div key={log.id} className={`flex items-start gap-4 p-4 rounded-2xl border ${cfg.color}`}>
+                                                <span className="text-2xl mt-0.5">{cfg.icon}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-bold text-gray-800 dark:text-white">{log.admin_name || 'Admin'}</span>
+                                                        <span className="text-gray-500 dark:text-gray-400 text-sm">{cfg.label}</span>
+                                                        {log.target_name && (
+                                                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{log.target_name}</span>
+                                                        )}
+                                                    </div>
+                                                    {log.details && (
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{log.details}</p>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+                                                    {new Date(log.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Modal de Gerenciamento Estendido */}
                 {

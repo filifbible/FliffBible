@@ -194,6 +194,28 @@ export const ProfileService = {
   },
 
   /**
+   * Atualiza status do perfil (bloqueio, admin, etc.)
+   */
+  async updateProfileStatus(
+    profileId: string,
+    status: { is_blocked?: boolean; is_admin?: boolean }
+  ): Promise<boolean> {
+    if (!supabase) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(status)
+      .eq('id', profileId);
+
+    if (error) {
+      console.error('Erro ao atualizar status do perfil:', error);
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
    * Atualiza informações básicas do perfil
    */
   async updateProfileInfo(
@@ -357,24 +379,5 @@ export const ProfileService = {
     }));
 
     return formattedData;
-  },
-
-  /**
-   * ADMIN: Atualiza status de bloqueio ou admin de um perfil
-   */
-  async updateProfileStatus(profileId: string, updates: { is_blocked?: boolean, is_admin?: boolean }): Promise<boolean> {
-    if (!supabase) return false;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', profileId);
-
-    if (error) {
-      console.error('Erro ao atualizar status do perfil:', error);
-      return false;
-    }
-
-    return true;
   },
 };

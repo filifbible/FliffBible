@@ -191,6 +191,16 @@ export interface Notice {
   created_at?: string;
 }
 
+// ── Manutenção ────────────────────────────────────────────────────────────────
+
+export interface MaintenanceSettings {
+  is_active: boolean;
+  message: string;
+  title: string;
+  estimated_return: string | null;
+  updated_at?: string;
+}
+
 // ── Conta ─────────────────────────────────────────────────────────────────────
 
 /** Conta de usuário (tabela: accounts) */
