@@ -3,6 +3,7 @@ import { Notice } from '../types';
 
 export const NoticeService = {
   async getActiveNotices(): Promise<Notice[]> {
+    if (!supabase) return [];
     const { data, error } = await supabase
       .from('notices')
       .select('*')
@@ -18,6 +19,7 @@ export const NoticeService = {
   },
 
   async getAllNotices(): Promise<Notice[]> {
+    if (!supabase) return [];
     const { data, error } = await supabase
       .from('notices')
       .select('*')
@@ -32,6 +34,7 @@ export const NoticeService = {
   },
 
   async createNotice(notice: Omit<Notice, 'id' | 'created_at'>): Promise<Notice | null> {
+    if (!supabase) return null;
     const { data, error } = await supabase
       .from('notices')
       .insert(notice)
@@ -47,6 +50,7 @@ export const NoticeService = {
   },
 
   async toggleNoticeStatus(id: string, active: boolean): Promise<boolean> {
+    if (!supabase) return false;
     const { error } = await supabase
       .from('notices')
       .update({ active })
@@ -61,6 +65,7 @@ export const NoticeService = {
   },
 
   async deleteNotice(id: string): Promise<boolean> {
+    if (!supabase) return false;
     const { error } = await supabase
       .from('notices')
       .delete()

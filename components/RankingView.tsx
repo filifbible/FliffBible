@@ -23,7 +23,7 @@ const RankingRow = ({
 }) => {
   const isMe = profile.id === currentProfileId;
   const medal = MEDAL[position];
-  const profileType = (profile as any).profile_type ?? (profile as any).type;
+  const profileType = ((profile as any).profile_type ?? (profile as any).type) as keyof typeof PROFILE_CONFIGS;
 
   return (
     <div
@@ -133,7 +133,7 @@ const RankingView: React.FC<RankingViewProps> = ({ profiles: initialProfiles, cu
       setLoadingGlobal(true);
       try {
         const data = await ProfileService.getGlobalRanking(50);
-        setGlobalProfiles(data);
+        setGlobalProfiles(data as any[]);
       } catch (e) {
         console.error('Erro ao buscar ranking global:', e);
       } finally {
