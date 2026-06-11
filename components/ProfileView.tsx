@@ -154,7 +154,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ profile, onUpdateProfile, onS
           </div>
           <div className="bg-gray-50/50 dark:bg-gray-900/30 p-6 rounded-3xl text-center border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all group">
             <span className="text-4xl mb-3 block group-hover:scale-110 transition-transform">🖼️</span>
-            <span className="text-2xl font-black text-gray-800 dark:text-white block mb-1">{profile.gallery?.length || 0}</span>
+            <span className="text-2xl font-black text-gray-800 dark:text-white block mb-1">{profile.paintings?.length || 0}</span>
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-pink-500 transition-colors">Obras</span>
           </div>
         </div>

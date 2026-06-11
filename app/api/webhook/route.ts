@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
-import { payment } from '@/lib/mercadopago';
+import { payment, preApproval } from '@/lib/mercadopago';
 import { validate, WebhookSchema } from '@/lib/validate';
 import { SubscriptionStatus } from '@/enums/subscription-status.enum';
 
@@ -74,9 +74,37 @@ export async function POST(req: NextRequest) {
       console.log('💳 Pagamento recebido. Status:', paymentData.status);
 
       if (paymentData.status === 'approved') {
-        // Renova premium — external_reference = user_id
+        // external_reference = user_id (definido ao criar a assinatura)
         const userId = paymentData.external_reference;
         if (userId) {
+          // Verifica se havia desconto de cupom pendente de upgrade
+          const { data: account } = await supabaseAdmin
+            .from('accounts')
+            .select('coupon_pending_full_price, subscription_id')
+            .eq('id', userId)
+            .single();
+
+          if (account?.coupon_pending_full_price && account?.subscription_id) {
+            console.log(`🏷️ 1º pagamento com cupom detectado. Atualizando assinatura para preço cheio: R$ ${account.coupon_pending_full_price}`);
+            // Atualiza o preapproval no MP para cobrar o valor cheio a partir do próximo ciclo
+            await preApproval.update({
+              id: account.subscription_id,
+              body: {
+                auto_recurring: {
+                  transaction_amount: account.coupon_pending_full_price,
+                } as any,
+              },
+            });
+            // Limpa o flag — a partir de agora todas as cobranças são no valor cheio
+            await supabaseAdmin
+              .from('accounts')
+              .update({ coupon_pending_full_price: null })
+              .eq('id', userId);
+
+            console.log('✅ Assinatura atualizada para preço cheio com sucesso.');
+          }
+
+          // Renova premium
           await supabaseAdmin
             .from('accounts')
             .update({ is_premium: true, subscription_status: SubscriptionStatus.AUTHORIZED })

@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import PhotoCapture from './PhotoCapture';
 import { ArtMissionTheme } from '../types';
+import { galleryService } from '../services/galleryService';
+import { commandBus } from '../commands/command-bus';
+import { CompleteArtChallengeCommand } from '../commands/handlers/complete-art-challenge.handler';
 
 interface PhysicalArtMissionProps {
   onSave: (base64: string) => void;
@@ -30,7 +33,7 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
       }
 
       setLoading(true);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
       try {
         const prompt = `Gere um tema criativo de desenho bíblico para crianças. 
         Retorne JSON: { "title": "O que desenhar", "instruction": "Como desenhar (curto)", "icon": "Emoji" }.`;
@@ -105,13 +108,31 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
       </div>
     );
   }
+  const handleSave = async (base64: string) => {
+    try {
+      setLoading(true);
+      
+      // Usando o Command Pattern para processar a submissão
+      const result = await commandBus.execute(new CompleteArtChallengeCommand({
+        profileId: (savedTheme as any)?.profileId || localStorage.getItem('selectedProfileId') || '',
+        artDataUrl: base64
+      }));
+
+      onSave(result.path); // Notifica o pai com o caminho do arquivo retornado pelo comando
+    } catch (error) {
+      console.error('Erro ao salvar imagem:', error);
+      alert('Erro ao salvar sua arte. Tente novamente!');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (showCamera) {
     return (
       <div className="p-4 md:p-8 max-w-xl mx-auto">
         <h2 className="text-2xl font-black text-center text-gray-800 dark:text-white mb-6 font-outfit">Registre sua Obra 📸</h2>
         <PhotoCapture
-          onCapture={onSave}
+          onCapture={handleSave}
           onCancel={() => setShowCamera(false)}
         />
       </div>

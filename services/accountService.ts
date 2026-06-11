@@ -1,16 +1,7 @@
 import { supabase } from './supabase';
+import { AccountData } from '../types';
 
-export interface AccountData {
-  id: string;
-  email: string;
-  full_name: string | null;
-  is_premium: boolean;
-  trial_end_date: string | null;
-  subscription_status: string | null;
-  theme: 'light' | 'dark';
-  created_at: string;
-  updated_at: string;
-}
+export type { AccountData };
 
 export const AccountService = {
   /**

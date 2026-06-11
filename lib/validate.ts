@@ -32,10 +32,12 @@ export const CreateSubscriptionNewUserSchema = z.object({
 });
 
 export const CreateSubscriptionExistingUserSchema = z.object({
-  user_id:       z.string().uuid(),
-  payer_email:   z.string().email(),
-  plan_id:       z.string().min(1),
-  card_token_id: z.string().min(1),
+  user_id:           z.string().uuid(),
+  payer_email:       z.string().email(),
+  plan_id:           z.string().min(1),
+  card_token_id:     z.string().min(1),
+  couponCode:        z.string().optional(),
+  payment_method_id: z.string().optional(),
 });
 
 export const WebhookSchema = z.object({

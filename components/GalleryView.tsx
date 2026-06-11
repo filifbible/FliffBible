@@ -1,14 +1,44 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import HomeButton from './HomeButton';
+import { galleryService } from '../services/galleryService';
 
 interface GalleryViewProps {
-  images: string[];
+  images?: string[]; // Tornar opcional para permitir carregamento interno
   onBack: () => void;
 }
 
-const GalleryView: React.FC<GalleryViewProps> = ({ images, onBack }) => {
+const GalleryView: React.FC<GalleryViewProps> = ({ images: initialImages, onBack }) => {
+  const [images, setImages] = useState<string[]>(initialImages || []);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!initialImages);
+
+  useEffect(() => {
+    // Se as imagens não foram passadas via props, carregamos do serviço
+    if (!initialImages || initialImages.length === 0) {
+      const loadImages = async () => {
+        try {
+          setLoading(true);
+          const imgs = await galleryService.listImages();
+          setImages(imgs);
+        } catch (error) {
+          console.error('Erro ao carregar imagens:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadImages();
+    }
+  }, [initialImages]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-blue-600 font-bold animate-pulse">Abrindo museu de artes...</p>
+      </div>
+    );
+  }
 
   if (!images || images.length === 0) {
     return (

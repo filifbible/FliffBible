@@ -3,14 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/services/supabase';
 import { ProfileService } from '@/services/profileService';
 import { ProfileType } from '@/types';
+import { CommandBus } from '@/commands/command-bus';
+import { LogoutCommand } from '@/commands/handlers/logout.handler';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+const commandBus = CommandBus.getInstance();
 
 const ProfileSelector = dynamic(() => import('@/components/ProfileSelector'), {
   loading: () => (
@@ -27,6 +26,7 @@ export default function HomePage() {
 
   // Carrega os perfis do usuário logado
   const loadProfiles = useCallback(async () => {
+    if (!supabase) { router.replace('/auth'); return; }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       router.replace('/auth');
@@ -70,7 +70,7 @@ export default function HomePage() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await commandBus.execute(new LogoutCommand());
     router.replace('/auth');
   };
 

@@ -9,7 +9,7 @@ const ProfileView = dynamic(() => import('@/components/ProfileView'), {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const dummyProfile = { id: '1', name: 'User', type: ProfileType.ADULTS, points: 0, coins: 0, unlockedItems: [], streak: 0, favorites: [], gallery: [], recordings: [], paintings: [], is_admin: false, is_blocked: false, lastChallengeDate: null, lastArtDate: null, lastVideoDate: null };
+  const dummyProfile = { id: '1', account_id: '', name: 'User', type: ProfileType.ADULTS, points: 0, coins: 0, unlockedItems: [], streak: 0, favorites: [], gallery: [], recordings: [], paintings: [], is_admin: false, is_blocked: false, lastChallengeDate: null, lastArtDate: null, lastVideoDate: null };
 
   return (
     <ProfileView

@@ -8,7 +8,7 @@ let ai: GoogleGenAI | null = null;
 const getAI = (): GoogleGenAI | null => {
   if (ai) return ai;
   
-  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || '';
   
   if (!apiKey) {
     console.warn('⚠️ GEMINI_API_KEY not configured. AI features will be disabled.');

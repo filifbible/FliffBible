@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import MemoryGame from './MemoryGame';
 import CatchGame from './CatchGame';
 import RockGame from './RockGame';
+import LetterTracingGame from './LetterTracingGame';
 
 interface BibleGameProps {
   onWin: (coins: number) => void;
@@ -10,7 +11,7 @@ interface BibleGameProps {
 }
 
 const BibleGame: React.FC<BibleGameProps> = ({ onWin, onBack }) => {
-  const [activeGame, setActiveGame] = useState<'MENU' | 'MEMORY' | 'CATCH' | 'ROCK'>('MENU');
+  const [activeGame, setActiveGame] = useState<'MENU' | 'MEMORY' | 'CATCH' | 'ROCK' | 'TRACE'>('MENU');
 
   if (activeGame === 'MEMORY') {
     return <MemoryGame onWin={onWin} onBack={() => setActiveGame('MENU')} />;
@@ -22,6 +23,10 @@ const BibleGame: React.FC<BibleGameProps> = ({ onWin, onBack }) => {
 
   if (activeGame === 'ROCK') {
     return <RockGame onWin={onWin} onBack={() => setActiveGame('MENU')} />;
+  }
+
+  if (activeGame === 'TRACE') {
+    return <LetterTracingGame onWin={onWin} onBack={() => setActiveGame('MENU')} />;
   }
 
   return (
@@ -66,6 +71,16 @@ const BibleGame: React.FC<BibleGameProps> = ({ onWin, onBack }) => {
           <h3 className="text-2xl font-black text-gray-800 dark:text-white mb-2">A Casa na Rocha</h3>
           <p className="text-gray-400 text-sm leading-relaxed mb-6">Construa sua casa sobre a rocha firme de Jesus!</p>
           <span className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest group-hover:bg-emerald-700">Jogar</span>
+        </div>
+
+        <div
+          onClick={() => setActiveGame('TRACE')}
+          className="bg-white dark:bg-gray-800 p-8 rounded-[3.5rem] shadow-xl border-4 border-rose-50 dark:border-gray-700 hover:border-rose-400 cursor-pointer transition-all group flex flex-col items-center text-center"
+        >
+          <div className="text-8xl mb-6 group-hover:scale-110 transition-transform">✏️</div>
+          <h3 className="text-2xl font-black text-gray-800 dark:text-white mb-2">Traçando a Letra</h3>
+          <p className="text-gray-400 text-sm leading-relaxed mb-6">Aprenda a escrever brincando com as letras!</p>
+          <span className="bg-rose-600 text-white px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest group-hover:bg-rose-700">Jogar</span>
         </div>
       </div>
 

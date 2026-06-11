@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
+import { supabase } from '@/services/supabase';
 import { ProfileService } from '@/services/profileService';
-import { ProfileData, ProfileType } from '@/types';
+import { ProfileData, ProfileType, Notice } from '@/types';
+import { NoticeService } from '@/services/noticeService';
 import { PROFILE_CONFIGS } from '@/constants';
 import { generateDailyDevotional } from '@/services/geminiService';
+import { CommandBus } from '@/commands/command-bus';
+import { LogoutCommand } from '@/commands/handlers/logout.handler';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+const commandBus = CommandBus.getInstance();
+
 
 const Navigation = dynamic(() => import('@/components/Navigation'), { ssr: false });
 
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [devotional, setDevotional] = useState<any>(null);
   const [loadingDevo, setLoadingDevo] = useState(false);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
+      if (!supabase) { router.replace('/auth'); return; }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { router.replace('/auth'); return; }
 
@@ -46,18 +49,22 @@ export default function DashboardPage() {
 
       const p: ProfileData = {
         id: data.id, name: data.name,
+        account_id: data.account_id,
         type: (data.profile_type as ProfileType) ?? ProfileType.ADULTS,
         avatar: data.avatar ?? undefined,
         bio: data.bio ?? undefined,
         points: data.points, coins: data.coins, streak: data.streak,
         unlockedItems: data.unlocked_items ?? [],
-        favorites: data.favorites ?? [], gallery: data.gallery ?? [],
+        favorites: data.favorites ?? [],
         recordings: data.recordings ?? [], paintings: data.paintings ?? [],
         lastChallengeDate: data.last_challenge_date,
         lastArtDate: data.last_art_date,
         is_admin: data.is_admin, is_blocked: data.is_blocked,
       };
       setProfile(p);
+
+      // Carrega avisos ativos
+      NoticeService.getActiveNotices().then(setNotices).catch(console.error);
 
       // Carrega devocional
       if (!devotional) {
@@ -74,7 +81,7 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     localStorage.removeItem('selectedProfileId');
-    await supabase.auth.signOut();
+    await commandBus.execute(new LogoutCommand());
     router.replace('/auth');
   };
 
@@ -103,6 +110,21 @@ export default function DashboardPage() {
       onLogout={handleLogout}
     >
       <div className="p-4 md:p-10 max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
+
+        {/* Quadro de Avisos Discreto */}
+        {notices.length > 0 && (
+          <div className="flex flex-col gap-2 w-full -mb-4">
+            {notices.map(notice => (
+              <div key={notice.id} className="bg-indigo-50/80 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30 rounded-2xl p-3 px-5 flex items-start sm:items-center gap-3 shadow-sm">
+                <span className="text-indigo-500 dark:text-indigo-400 text-lg">📢</span>
+                <div className="flex-1">
+                  <h3 className="font-bold text-indigo-900 dark:text-indigo-300 text-sm leading-tight">{notice.title}</h3>
+                  <p className="text-indigo-700/80 dark:text-indigo-400/80 text-xs mt-0.5">{notice.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Header com Avatar e Nome */}
         <div className="flex items-center justify-between">
@@ -169,7 +191,7 @@ export default function DashboardPage() {
 
             {/* Missão de Desenho (apenas crianças) */}
             {!isAdult && (
-              <div onClick={() => router.push('/games')} className={`group relative overflow-hidden rounded-[3rem] p-10 border-4 transition-all cursor-pointer ${isArtDone ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-pink-50 border-pink-100 dark:bg-pink-900/20 dark:border-pink-800 hover:border-pink-300'}`}>
+              <div onClick={() => router.push('/art-mission')} className={`group relative overflow-hidden rounded-[3rem] p-10 border-4 transition-all cursor-pointer ${isArtDone ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-pink-50 border-pink-100 dark:bg-pink-900/20 dark:border-pink-800 hover:border-pink-300'}`}>
                 <div className="flex justify-between items-center mb-8">
                   <span className="text-6xl">{isArtDone ? '🎨' : '📸'}</span>
                   <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full ${isArtDone ? 'bg-emerald-200 text-emerald-700' : 'bg-pink-200 text-pink-700'}`}>
@@ -195,7 +217,7 @@ export default function DashboardPage() {
           </button>
 
           {!isAdult && (
-            <button onClick={() => router.push('/bible')} className="relative h-44 bg-gradient-to-br from-rose-400 to-orange-400 rounded-[3rem] p-8 text-white shadow-2xl overflow-hidden group transition-all hover:scale-[1.02] border-2 border-white/10">
+            <button onClick={() => router.push('/voz-da-fe')} className="relative h-44 bg-gradient-to-br from-rose-400 to-orange-400 rounded-[3rem] p-8 text-white shadow-2xl overflow-hidden group transition-all hover:scale-[1.02] border-2 border-white/10">
               <div className="absolute right-[-20px] top-[-20px] text-[12rem] opacity-20 transform group-hover:rotate-12 transition-transform">🎤</div>
               <div className="relative z-10 h-full flex flex-col justify-center items-start text-left">
                 <span className="bg-white/20 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">Minha Voz</span>
@@ -212,7 +234,8 @@ export default function DashboardPage() {
             { label: 'Jogar',   icon: '🎮', route: '/games',   hover: 'hover:bg-emerald-50' },
             ...(!isAdult ? [
               { label: 'Loja',   icon: '🛍️', route: '/shop',    hover: 'hover:bg-yellow-50' },
-              { label: 'Ateliê', icon: '🎨', route: '/games',   hover: 'hover:bg-pink-50' },
+              { label: 'Ateliê', icon: '🎨', route: '/art-mission',   hover: 'hover:bg-pink-50' },
+              { label: 'Galeria', icon: '🖼️', route: '/gallery',   hover: 'hover:bg-blue-50' },
             ] : []),
             { label: 'Jornada', icon: '🏆', route: '/ranking', hover: 'hover:bg-indigo-50' },
           ].map(item => (

@@ -17,7 +17,6 @@ export interface ProfileData {
   last_video_date: string | null;
   unlocked_items: string[];
   favorites: string[];
-  gallery: string[];
   recordings: AudioRecording[];
   paintings: string[];
   art_mission_theme: ArtMissionTheme | null;
@@ -25,6 +24,10 @@ export interface ProfileData {
   updated_at: string;
   is_admin?: boolean;
   is_blocked?: boolean;
+  account?: {
+    is_premium?: boolean;
+    subscription_status?: string | null;
+  };
 }
 
 export const ProfileService = {
@@ -58,7 +61,6 @@ export const ProfileService = {
         streak: 1,
         unlocked_items: ['coloring_book', 'pixel_free'],
         favorites: [],
-        gallery: [],
         recordings: [],
         paintings: [],
       })
@@ -71,6 +73,48 @@ export const ProfileService = {
     }
 
     return data;
+  },
+
+  /**
+   * Obtém ranking global (top 50 perfis de toda a plataforma)
+   */
+  async getGlobalRanking(limit = 50): Promise<ProfileData[]> {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, account_id, name, profile_type, avatar, points, coins, streak, is_admin')
+      .order('points', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Erro ao buscar ranking global:', error);
+      return [];
+    }
+
+    return (data || []).map(p => ({
+      id: p.id,
+      account_id: p.account_id,
+      name: p.name,
+      profile_type: p.profile_type,
+      user_type: 'child' as any,
+      avatar: p.avatar,
+      bio: null,
+      points: p.points,
+      coins: p.coins,
+      streak: p.streak,
+      last_challenge_date: null,
+      last_art_date: null,
+      last_video_date: null,
+      unlocked_items: [],
+      favorites: [],
+      recordings: [],
+      paintings: [],
+      art_mission_theme: null,
+      created_at: '',
+      updated_at: '',
+      is_admin: p.is_admin,
+    }));
   },
 
   /**
@@ -150,6 +194,28 @@ export const ProfileService = {
   },
 
   /**
+   * Atualiza status do perfil (bloqueio, admin, etc.)
+   */
+  async updateProfileStatus(
+    profileId: string,
+    status: { is_blocked?: boolean; is_admin?: boolean }
+  ): Promise<boolean> {
+    if (!supabase) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(status)
+      .eq('id', profileId);
+
+    if (error) {
+      console.error('Erro ao atualizar status do perfil:', error);
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
    * Atualiza informações básicas do perfil
    */
   async updateProfileInfo(
@@ -210,7 +276,7 @@ export const ProfileService = {
    */
   async updateArrayField(
     profileId: string,
-    field: 'unlocked_items' | 'favorites' | 'gallery' | 'recordings' | 'paintings',
+    field: 'unlocked_items' | 'favorites' | 'recordings' | 'paintings',
     value: any[]
   ): Promise<boolean> {
     return await this.updateProfile(profileId, { [field]: value });
@@ -221,7 +287,7 @@ export const ProfileService = {
    */
   async addToArray(
     profileId: string,
-    field: 'unlocked_items' | 'favorites' | 'gallery' | 'recordings' | 'paintings',
+    field: 'unlocked_items' | 'favorites' | 'recordings' | 'paintings',
     item: any
   ): Promise<boolean> {
     const profile = await this.getProfile(profileId);
@@ -298,7 +364,7 @@ export const ProfileService = {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, account:accounts(is_premium, subscription_status)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -306,25 +372,12 @@ export const ProfileService = {
       return [];
     }
 
-    return data || [];
-  },
+    // O Supabase pode retornar array para joins 1:1, desembrulhamos
+    const formattedData = (data || []).map((item: any) => ({
+      ...item,
+      account: Array.isArray(item.account) ? item.account[0] : item.account
+    }));
 
-  /**
-   * ADMIN: Atualiza status de bloqueio ou admin de um perfil
-   */
-  async updateProfileStatus(profileId: string, updates: { is_blocked?: boolean, is_admin?: boolean }): Promise<boolean> {
-    if (!supabase) return false;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', profileId);
-
-    if (error) {
-      console.error('Erro ao atualizar status do perfil:', error);
-      return false;
-    }
-
-    return true;
+    return formattedData;
   },
 };

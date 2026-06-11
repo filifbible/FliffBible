@@ -41,9 +41,10 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites, onBack
   // Carregar versículos quando livro e capítulo forem selecionados
   useEffect(() => {
     if (selectedBook && selectedChapter) {
+      const chapter = selectedChapter!; // non-null assertion: guard above ensures it's a number
       const fetchVerses = async () => {
         setLoading(true);
-        const cacheKey = `bible_cache_${selectedBook.id}_${selectedChapter}`;
+        const cacheKey = `bible_cache_${selectedBook.id}_${chapter}`;
         const cached = localStorage.getItem(cacheKey);
 
         if (cached) {
@@ -53,7 +54,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ onFavorite, favorites, onBack
         }
 
         try {
-          const verses = await BibleSupabaseService.getChapterVerses(selectedBook.id, selectedChapter);
+          const verses = await BibleSupabaseService.getChapterVerses(selectedBook.id!, chapter);
           setChapterVerses(verses);
           localStorage.setItem(cacheKey, JSON.stringify(verses));
         } catch (error) {

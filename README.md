@@ -18,12 +18,14 @@ filif-bible+ Projeto/
 │   ├── (protected)/      # Rotas privadas protegidas por Middleware
 │   └── api/              # Endpoints Serverless (Controllers que expõem a lógica)
 ├── commands/
-│   └── handlers/         # Command Pattern: Cada arquivo é um caso de uso específico
-├── entities/             # Entidades de Domínio e interfaces limpas
+│   ├── command-bus.ts    # Singleton que registra e despacha handlers
+│   └── handlers/         # Um arquivo por caso de uso (CompleteArtChallenge, etc.)
+├── entities/             # Entidades de Domínio com regras de negócio puras
 ├── enums/                # Enumeradores de uso global
-├── services/             # Integração com serviços externos
+├── services/             # Integração com serviços externos (Supabase, Gemini, MP)
 ├── components/           # Componentes React reutilizáveis (UI)
 ├── lib/                  # Utilitários e configurações
+├── types.ts              # ❤️ Fonte única de verdade para todos os tipos compartilhados
 └── middleware.ts         # Middleware do Next.js (Proteção de Rotas e Redirecionamentos)
 ```
 
@@ -31,16 +33,95 @@ filif-bible+ Projeto/
 
 ### 1. Command Pattern (CQRS Lite)
 
-Para evitar que as API Routes se tornem arquivos gigantescos, toda regra de negócios complexa foi isolada dentro da pasta `commands/handlers/`.
-- **Como funciona:** Uma API Route apenas recebe os dados da requisição, valida o formato e os repassa para um **Handler**.
-- O **Handler** contém o passo a passo da lógica de negócios, faz interações com os Services e retorna um resultado formatado.
-- Isso traz facilidade em criar testes e manter a responsabilidade única de cada arquivo.
+Para evitar que as API Routes e componentes se tornem arquivos gigantescos, toda regra de negócios complexa é isolada dentro da pasta `commands/handlers/`.
 
-### 2. Separação de Entidades e Camadas (DDD)
+#### Como funciona
 
-- **`entities/`**: Define o modelo de dados em TypeScript. Tanto o Frontend (React) quanto o Backend (API) compartilham exatamente o mesmo modelo.
+```
+Componente / API Route
+    ↓ new CompleteArtChallengeCommand({ profileId, artDataUrl })
+    ↓ commandBus.execute(command)
+    ↓ CompleteArtChallengeHandler.execute()
+         1. galleryService.uploadImage()     ← upload ao Storage
+         2. ProfileService.updateLastActivity()  ← marca missão concluída
+         3. ProfileService.addRewards()          ← concede moedas
+         4. return { path }                      ← retorna resultado
+```
+
+#### Regras obrigatórias
+
+- **Um Handler = Um caso de uso.** Não misture lógicas diferentes num mesmo handler.
+- **Componentes UI nunca chamam services diretamente** para operações que envolvam múltiplas etapas. Devem usar o `commandBus`.
+- **Handlers são registrados no `CommandBus`** durante sua instanciação (singleton).
+- **Handlers retornam dados tipados**, nunca `void` quando o resultado é relevante para o chamador.
+
+#### Handlers existentes
+
+| Arquivo | Caso de Uso |
+|---|---|
+| `complete-art-challenge.handler.ts` | Upload de arte + atualizar perfil + conceder moedas |
+| `complete-verse-challenge.handler.ts` | Concluir desafio de versículo |
+| `authenticate.handler.ts` | Registro e login de usuário |
+| `select-profile.handler.ts` | Seleção de perfil ativo |
+| `buy-item.handler.ts` | Compra de item na loja |
+| `game-win.handler.ts` | Conclusão de jogo e pontuação |
+| `logout.handler.ts` | Logout e limpeza de sessão |
+
+#### Como adicionar um novo Handler
+
+```typescript
+// 1. Crie o arquivo commands/handlers/meu-caso.handler.ts
+import { Command, CommandHandler } from '../command-bus';
+
+export class MeuCasoCommand implements Command {
+  readonly type = 'MeuCasoCommand';
+  constructor(public payload: { /* dados necessários */ }) {}
+}
+
+export class MeuCasoHandler implements CommandHandler<MeuCasoCommand> {
+  async execute(command: MeuCasoCommand): Promise<{ /* resultado */ }> {
+    // lógica de negócio aqui
+  }
+}
+
+// 2. Registre no constructor do CommandBus (command-bus.ts)
+this.register('MeuCasoCommand', new MeuCasoHandler());
+
+// 3. Dispare do componente ou API Route
+const result = await commandBus.execute(new MeuCasoCommand({ ... }));
+```
+
+### 2. Contrato de Tipos Centralizado (`types.ts`)
+
+O arquivo `types.ts` na raiz é a **fonte única de verdade** para todas as interfaces e tipos compartilhados entre o Frontend e o Backend.
+
+#### Regra DRY obrigatória
+
+> **Nenhum arquivo de `services/`, `components/` ou `app/` deve declarar uma `interface` ou `type` que já exista ou que possa ser reutilizada em mais de um lugar. Todo tipo compartilhado deve viver em `types.ts`.**
+
+#### Organização por domínio
+
+| Domínio | Tipos |
+|---|---|
+| **Perfil / Usuário** | `ProfileType`, `UserType`, `ProfileData`, `UserState`, `AudioRecording`, `ArtMissionTheme` |
+| **Bíblia** | `Testament`, `BibleBook`, `BibleVerse`, `QuizQuestion` |
+| **Galeria** | `GalleryImage` |
+| **Loja** | `ShopItem` (aliases `@deprecated`: `ShopItemOverride`, `ShopItemPrice`) |
+| **Assinaturas** | `SubscriptionPlan`, `CardData` |
+| **Conta** | `AccountData` |
+| **Navegação** | `AppScreen` |
+
+#### Tipos locais permitidos (exceções justificadas)
+
+Alguns tipos podem permanecer locais ao seu arquivo se forem puramente auxiliares e não reutilizáveis:
+- `AuthResult` em `authService.ts` — encapsula objetos internos do Supabase Auth.
+- `ProfileData` (snake_case) em `profileService.ts` — representa o schema do banco antes do mapeamento para a UI.
+
+### 3. Separação de Entidades e Camadas (DDD)
+
+- **`entities/`**: Entidades de domínio com regras de negócio puras (ex: `ProfileEntity.spendCoins()`). Não dependem de Supabase nem React.
 - **`enums/`**: Concentra literais e regras constantes, evitando "Magic Strings" espalhadas pelo código.
-- **`services/`**: Camada que lida diretamente com dependências externas (Supabase, Mercado Pago).
+- **`services/`**: Camada que lida diretamente com dependências externas (Supabase, Mercado Pago, Gemini). Importam tipos de `types.ts`.
 
 ### 3. Middleware Inteligente
 

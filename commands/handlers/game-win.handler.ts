@@ -1,4 +1,5 @@
 import { Command, CommandHandler } from '../command-bus';
+import { ProfileService } from '../../services/profileService';
 
 export class GameWinCommand implements Command {
   readonly type = 'GameWinCommand';
@@ -7,7 +8,9 @@ export class GameWinCommand implements Command {
 
 export class GameWinHandler implements CommandHandler<GameWinCommand> {
   async execute(command: GameWinCommand): Promise<void> {
-    // Processamento de vitória num minigame
-    console.log(`Game ${command.payload.gameId} won by ${command.payload.profileId}. Rewarded: ${command.payload.coinsWon} coins.`);
+    const { profileId, coinsWon } = command.payload;
+
+    // Concede moedas e pontos de XP ao vencer um jogo
+    await ProfileService.addRewards(profileId, coinsWon, coinsWon);
   }
 }
