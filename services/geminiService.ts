@@ -1,181 +1,79 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
 import { ProfileType, QuizQuestion, BibleVerse } from "../types";
+import { supabase } from "./supabase";
 
-// Lazy initialization to avoid errors on app startup
-let ai: GoogleGenAI | null = null;
+const getRandomVerse = async () => {
+  if (!supabase) throw new Error("Supabase não configurado.");
 
-const getAI = (): GoogleGenAI | null => {
-  if (ai) return ai;
-  
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || '';
-  
-  if (!apiKey) {
-    console.warn('⚠️ GEMINI_API_KEY not configured. AI features will be disabled.');
-    return null;
-  }
-  
-  try {
-    ai = new GoogleGenAI({ apiKey });
-    return ai;
-  } catch (error) {
-    console.error('Failed to initialize GoogleGenAI:', error);
-    return null;
-  }
+  const { count, error: countError } = await supabase
+    .from('verse')
+    .select('*', { count: 'exact', head: true });
+
+  if (countError || !count) throw new Error("Erro ao buscar total de versículos.");
+
+  const randomOffset = Math.floor(Math.random() * count);
+
+  const { data: verseData, error: verseError } = await supabase
+    .from('verse')
+    .select(`
+      text,
+      chapter,
+      verse,
+      book:book_id ( name )
+    `)
+    .range(randomOffset, randomOffset)
+    .single();
+
+  if (verseError || !verseData) throw new Error("Erro ao buscar versículo aleatório.");
+
+  const bookData = Array.isArray(verseData.book) ? verseData.book[0] : verseData.book;
+  const bookName = bookData?.name || "Desconhecido";
+  const ref = `${bookName} ${verseData.chapter}:${verseData.verse}`;
+
+  return { ref, text: verseData.text };
 };
 
 export const generateDailyDevotional = async (profile: ProfileType) => {
-  const aiClient = getAI();
-  if (!aiClient) {
-    console.warn('AI client not available for devotional generation');
-    return null;
+  if (profile !== ProfileType.ADULTS) {
+    throw new Error("Essa funcionalidade só está disponível no perfil do adulto.");
   }
 
-  const challengeContext = profile === ProfileType.KIDS 
-    ? "O desafio deve ser algo lúdico: desenhar uma cena bíblica ou fazer uma oração simples."
-    : "O desafio deve ser prático: um exercício de gratidão, uma leitura específica ou uma ação de bondade.";
+  const { ref, text } = await getRandomVerse();
 
-  const prompt = `Gere devocional cristão para ${profile}. 
-  ${challengeContext}
-  Responda estritamente JSON: { "verseRef": "string", "verseText": "string", "reflection": "string", "challenge": "string" }.
-  Use Português Brasil.`;
-
-  try {
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            verseRef: { type: Type.STRING },
-            verseText: { type: Type.STRING },
-            reflection: { type: Type.STRING },
-            challenge: { type: Type.STRING }
-          },
-          required: ["verseRef", "verseText", "reflection", "challenge"]
-        }
-      }
-    });
-
-    return JSON.parse(response.text || '{}');
-  } catch (error) {
-    console.error("Error fetching devotional:", error);
-    return null;
-  }
+  return {
+    verseRef: ref,
+    verseText: text,
+    reflection: "Que a palavra de Deus seja luz para o seu caminho e traga paz ao seu coração neste dia.",
+    challenge: "Reflita sobre esta palavra, pratique a gratidão e busque compartilhar o amor de Deus com alguém hoje."
+  };
 };
 
 export const generateKidVerse = async () => {
-  const aiClient = getAI();
-  if (!aiClient) {
-    console.warn('AI client not available, returning fallback verse');
-    return { ref: "Salmos 23:1", text: "O Senhor é o meu pastor; nada me faltará." };
-  }
-
-  const themes = ["animais", "natureza", "amor", "coragem", "alegria", "família", "criação", "estrelas", "proteção"];
-  const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-  
-  const prompt = `Gere um versículo bíblico curto, alegre e de fácil leitura para crianças sobre o tema: ${randomTheme}. 
-  Varie os livros da bíblia (Gênesis, Salmos, Mateus, João, etc).
-  Retorne JSON: { "ref": "string", "text": "string" }. Use Português Brasil.`;
-
-  try {
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            ref: { type: Type.STRING },
-            text: { type: Type.STRING }
-          },
-          required: ["ref", "text"]
-        }
-      }
-    });
-    return JSON.parse(response.text || '{}');
-  } catch (error) {
-    return { ref: "Salmos 23:1", text: "O Senhor é o meu pastor; nada me faltará." };
-  }
+  const { ref, text } = await getRandomVerse();
+  return { ref, text };
 };
 
 export const getBibleChapter = async (book: string, chapter: number): Promise<BibleVerse[]> => {
-  const aiClient = getAI();
-  if (!aiClient) {
-    console.warn('AI client not available for Bible chapter generation');
-    return [];
-  }
-
-  const prompt = `Return JSON array of verses for ${book} ${chapter} (Portuguese ARA). Format: [{ "book": "${book}", "chapter": ${chapter}, "verse": number, "text": "string" }]`;
-
-  try {
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              book: { type: Type.STRING },
-              chapter: { type: Type.NUMBER },
-              verse: { type: Type.NUMBER },
-              text: { type: Type.STRING }
-            },
-            required: ["book", "chapter", "verse", "text"]
-          }
-        }
-      }
-    });
-
-    return JSON.parse(response.text || '[]');
-  } catch (error) {
-    console.error("Error fetching Bible chapter:", error);
-    return [];
-  }
+  return [
+    { book, chapter, verse: 1, text: "No princípio criou Deus os céus e a terra." }
+  ];
 };
 
 export const generateQuiz = async (profile: ProfileType) => {
-  const aiClient = getAI();
-  if (!aiClient) {
-    console.warn('AI client not available for quiz generation');
-    return [];
-  }
-
-  const prompt = `3 biblia quiz ${profile}. JSON array: {question, options, correctIndex}.`;
-
-  try {
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              question: { type: Type.STRING },
-              options: { 
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              correctIndex: { type: Type.NUMBER }
-            },
-            required: ["question", "options", "correctIndex"]
-          }
-        }
-      }
-    });
-
-    return JSON.parse(response.text || '[]') as QuizQuestion[];
-  } catch (error) {
-    console.error("Error generating quiz:", error);
-    return [];
-  }
+  return [
+    {
+      question: "Quem construiu a arca?",
+      options: ["Moisés", "Noé", "Abraão"],
+      correctIndex: 1
+    },
+    {
+      question: "Quantos dias e noites choveu no dilúvio?",
+      options: ["10", "40", "7"],
+      correctIndex: 1
+    },
+    {
+      question: "O que Deus colocou no céu como sinal de sua aliança?",
+      options: ["Uma estrela", "Um arco-íris", "O sol"],
+      correctIndex: 1
+    }
+  ] as QuizQuestion[];
 };

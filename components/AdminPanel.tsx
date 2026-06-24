@@ -8,6 +8,8 @@ import { NoticeService } from '../services/noticeService';
 import { Notice } from '../types';
 import { AdminLogService, AdminLog } from '../services/adminLogService';
 import { MaintenanceService, MaintenanceSettings } from '../services/maintenanceService';
+import { ArtMissionDbService, ArtMissionDb } from '../services/artMissionDbService';
+import { ReadingMissionDbService, ReadingMissionDb } from '../services/readingMissionDbService';
 import HomeButton from './HomeButton';
 
 interface AdminPanelProps {
@@ -18,8 +20,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [profiles, setProfiles] = useState<ProfileData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
-    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS' | 'LOGS' | 'MANUTENCAO'>('USERS');
+    const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS' | 'LOGS' | 'MANUTENCAO' | 'MISSOES' | 'MISSAO_LEITURA'>('USERS');
 
+    // Reading Missions states
+    const [readingMissions, setReadingMissions] = useState<ReadingMissionDb[]>([]);
+    const [loadingReadingMissions, setLoadingReadingMissions] = useState(false);
+    const [newReadingMissionRef, setNewReadingMissionRef] = useState('');
+    const [newReadingMissionText, setNewReadingMissionText] = useState('');
+    const [newReadingMissionHint, setNewReadingMissionHint] = useState('');
+    const [newReadingMissionQuestion, setNewReadingMissionQuestion] = useState('');
+    const [newReadingMissionOptionsStr, setNewReadingMissionOptionsStr] = useState('');
+    const [newReadingMissionCorrectIndex, setNewReadingMissionCorrectIndex] = useState<number>(0);
+    const [isCreatingReadingMission, setIsCreatingReadingMission] = useState(false);
     // Logs states
     const [logs, setLogs] = useState<AdminLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
@@ -37,6 +49,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
     // Create User states
     const [newUserName, setNewUserName] = useState('');
+
+    // Missions states
+    const [missions, setMissions] = useState<ArtMissionDb[]>([]);
+    const [loadingMissions, setLoadingMissions] = useState(false);
+    const [newMissionTitle, setNewMissionTitle] = useState('');
+    const [newMissionInstruction, setNewMissionInstruction] = useState('');
+    const [newMissionIcon, setNewMissionIcon] = useState('🎨');
+    const [isCreatingMission, setIsCreatingMission] = useState(false);
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUserIsAdmin, setNewUserIsAdmin] = useState(false);
@@ -137,6 +157,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             loadLogs();
         } else if (activeTab === 'MANUTENCAO') {
             loadMaintenance();
+        } else if (activeTab === 'MISSOES') {
+            loadMissions();
+        } else if (activeTab === 'MISSAO_LEITURA') {
+            loadReadingMissions();
         }
     }, [activeTab, revenueMonth, revenueYear]);
 
@@ -191,6 +215,133 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         } finally {
             setLoadingNotices(false);
         }
+    };
+
+    const loadMissions = async () => {
+        setLoadingMissions(true);
+        try {
+            const data = await ArtMissionDbService.getAllMissions();
+            setMissions(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingMissions(false);
+        }
+    };
+
+    const loadReadingMissions = async () => {
+        setLoadingReadingMissions(true);
+        try {
+            const data = await ReadingMissionDbService.getAllMissions();
+            setReadingMissions(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingReadingMissions(false);
+        }
+    };
+
+    const handleCreateReadingMission = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newReadingMissionRef || !newReadingMissionHint || !newReadingMissionQuestion || !newReadingMissionOptionsStr) {
+            alert('Preencha os campos obrigatórios (Ref, Dica, Pergunta e Opções)!');
+            return;
+        }
+
+        const optionsArray = newReadingMissionOptionsStr.split(',').map(s => s.trim()).filter(s => s);
+        if (optionsArray.length < 2) {
+            alert('Forneça pelo menos duas opções, separadas por vírgula.');
+            return;
+        }
+
+        if (newReadingMissionCorrectIndex < 0 || newReadingMissionCorrectIndex >= optionsArray.length) {
+            alert('O índice da opção correta é inválido.');
+            return;
+        }
+
+        setIsCreatingReadingMission(true);
+        try {
+            const mission = await ReadingMissionDbService.createMission({
+                ref: newReadingMissionRef,
+                text: newReadingMissionText || "Ler a Bíblia",
+                hint: newReadingMissionHint,
+                verification_question: newReadingMissionQuestion,
+                options: optionsArray,
+                correct_index: newReadingMissionCorrectIndex,
+                active: true
+            });
+            if (mission) {
+                alert('Missão de Leitura criada com sucesso!');
+                setNewReadingMissionRef('');
+                setNewReadingMissionText('');
+                setNewReadingMissionHint('');
+                setNewReadingMissionQuestion('');
+                setNewReadingMissionOptionsStr('');
+                setNewReadingMissionCorrectIndex(0);
+                loadReadingMissions();
+            } else {
+                alert('Erro ao criar missão. A tabela "reading_missions" existe?');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro inesperado ao criar missão de leitura.');
+        } finally {
+            setIsCreatingReadingMission(false);
+        }
+    };
+
+    const toggleReadingMissionStatus = async (id: string, currentStatus: boolean) => {
+        const success = await ReadingMissionDbService.toggleMissionStatus(id, !currentStatus);
+        if (success) loadReadingMissions();
+    };
+
+    const handleDeleteReadingMission = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja deletar esta missão de leitura?')) return;
+        const success = await ReadingMissionDbService.deleteMission(id);
+        if (success) loadReadingMissions();
+    };
+
+    const handleCreateMission = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMissionTitle || !newMissionInstruction) {
+            alert('Preencha título e instrução!');
+            return;
+        }
+
+        setIsCreatingMission(true);
+        try {
+            const mission = await ArtMissionDbService.createMission({
+                title: newMissionTitle,
+                instruction: newMissionInstruction,
+                icon: newMissionIcon,
+                active: true
+            });
+            if (mission) {
+                alert('Missão criada com sucesso!');
+                setNewMissionTitle('');
+                setNewMissionInstruction('');
+                setNewMissionIcon('🎨');
+                loadMissions();
+            } else {
+                alert('Erro ao criar missão. A tabela existe no banco?');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro inesperado ao criar missão.');
+        } finally {
+            setIsCreatingMission(false);
+        }
+    };
+
+    const toggleMissionStatus = async (id: string, currentStatus: boolean) => {
+        const success = await ArtMissionDbService.toggleMissionStatus(id, !currentStatus);
+        if (success) loadMissions();
+    };
+
+    const handleDeleteMission = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja deletar esta missão?')) return;
+        const success = await ArtMissionDbService.deleteMission(id);
+        if (success) loadMissions();
     };
 
     const handleCreateNotice = async (e: React.FormEvent) => {
@@ -451,79 +602,100 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32 font-outfit relative">
+        <div className="p-4 md:p-8 max-w-[90rem] mx-auto flex flex-col md:flex-row gap-6 animate-in fade-in duration-500 pb-32 font-outfit relative">
 
             {/* Background Blobs */}
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 bg-blob-indigo opacity-50 fixed pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 bg-blob-pink opacity-50 fixed pointer-events-none"></div>
 
-            <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8 bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-[2rem] shadow-lg border border-white/50 dark:border-gray-800/50">
-                    <div>
-                        <h1 className="text-3xl md:text-4xl font-black text-gray-800 dark:text-white tracking-tight">Painel Administrativo</h1>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">Gerenciamento Geral</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex bg-gray-100/50 dark:bg-gray-800/50 p-1 rounded-xl backdrop-blur-sm">
-                            <button
-                                onClick={() => setActiveTab('USERS')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'USERS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Usuários
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('SHOP')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'SHOP' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Loja
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('COUPONS')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'COUPONS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Cupons
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('FATURAMENTO')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'FATURAMENTO' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Faturamento
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('AVISOS')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'AVISOS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Avisos
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('LOGS')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'LOGS' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Logs
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('CREATE_USER')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'CREATE_USER' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                            >
-                                Criar Usuário
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('MANUTENCAO')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${
-                                    activeTab === 'MANUTENCAO'
-                                        ? 'bg-white dark:bg-gray-700 shadow-sm text-orange-600'
-                                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                                }`}
-                            >
-                                {maintenanceSettings.is_active && (
-                                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                                )}
-                                Manutenção
-                            </button>
-                        </div>
-                        <HomeButton onClick={onBack} label="Voltar" className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-none border-none hover:bg-gray-200 dark:hover:bg-gray-700" />
+            {/* Sidebar Navigation */}
+            <div className="w-full md:w-64 lg:w-72 flex-shrink-0 relative z-10 flex flex-col gap-4">
+                <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-[2rem] shadow-lg border border-white/50 dark:border-gray-800/50">
+                    <h1 className="text-3xl font-black text-gray-800 dark:text-white tracking-tight leading-tight mb-1">Painel<br/>Admin</h1>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mb-6">Gerenciamento Geral</p>
+
+                    <div className="flex flex-col gap-1.5">
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-2 mb-1 px-2">Principal</div>
+                        <button
+                            onClick={() => setActiveTab('USERS')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'USERS' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Usuários
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('CREATE_USER')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'CREATE_USER' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Criar Usuário
+                        </button>
+
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-4 mb-1 px-2">E-commerce</div>
+                        <button
+                            onClick={() => setActiveTab('SHOP')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'SHOP' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Loja
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('COUPONS')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'COUPONS' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Cupons
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('FATURAMENTO')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'FATURAMENTO' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Faturamento
+                        </button>
+
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-4 mb-1 px-2">Conteúdo</div>
+                        <button
+                            onClick={() => setActiveTab('AVISOS')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'AVISOS' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Avisos
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('MISSOES')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'MISSOES' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Missões Arte
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('MISSAO_LEITURA')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'MISSAO_LEITURA' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Missão Palavra
+                        </button>
+
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-4 mb-1 px-2">Sistema</div>
+                        <button
+                            onClick={() => setActiveTab('LOGS')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'LOGS' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'}`}
+                        >
+                            Logs
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('MANUTENCAO')}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'MANUTENCAO'
+                                    ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 shadow-sm'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50'
+                            }`}
+                        >
+                            Manutenção
+                            {maintenanceSettings.is_active && (
+                                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                            )}
+                        </button>
                     </div>
                 </div>
+                <HomeButton onClick={onBack} label="Voltar para Home" className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-white/50 dark:border-gray-800/50 shadow-lg hover:bg-white dark:hover:bg-gray-800 w-full justify-center" />
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 min-w-0 relative z-10 space-y-6">
 
                 {
                     activeTab === 'USERS' ? (
@@ -1237,6 +1409,184 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     </div>
                 )}
 
+                {activeTab === 'MISSAO_LEITURA' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
+                            <div className="mb-8 bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-400 mb-4">Nova Missão da Palavra (Leitura)</h3>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">Referência Bíblica</label>
+                                            <input type="text" value={newReadingMissionRef} onChange={e => setNewReadingMissionRef(e.target.value)} placeholder="Ex: Salmos 23:1" className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white" />
+                                        </div>
+                                        <div className="flex-[2]">
+                                            <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">Dica</label>
+                                            <input type="text" value={newReadingMissionHint} onChange={e => setNewReadingMissionHint(e.target.value)} placeholder="Ex: Este versículo fala sobre o nosso Pastor..." className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-medium text-gray-800 dark:text-white" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="flex-[2]">
+                                            <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">Pergunta de Verificação</label>
+                                            <input type="text" value={newReadingMissionQuestion} onChange={e => setNewReadingMissionQuestion(e.target.value)} placeholder="Ex: O que não faltará para quem tem o Senhor como pastor?" className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-medium text-gray-800 dark:text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">Índice da Opção Correta</label>
+                                            <input type="number" value={newReadingMissionCorrectIndex} onChange={e => setNewReadingMissionCorrectIndex(Number(e.target.value))} min="0" className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-medium text-gray-800 dark:text-white" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">Opções (Separadas por vírgula)</label>
+                                        <input type="text" value={newReadingMissionOptionsStr} onChange={e => setNewReadingMissionOptionsStr(e.target.value)} placeholder="Ex: Nada, Dinheiro, Comida" className="w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2 font-medium text-gray-800 dark:text-white" />
+                                        <p className="text-xs text-gray-500 mt-1">Lembre-se que o Índice da Opção Correta começa em 0 (Ex: se a correta for "Nada", o índice é 0).</p>
+                                    </div>
+                                    <div className="flex justify-end mt-2">
+                                        <button onClick={handleCreateReadingMission} disabled={isCreatingReadingMission} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50">
+                                            {isCreatingReadingMission ? 'Criando...' : 'Criar Missão de Leitura'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {loadingReadingMissions ? (
+                                <div className="p-10 text-center text-gray-500 font-bold">Carregando missões...</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Referência</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Pergunta / Opções</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {readingMissions.map(mission => (
+                                                <tr key={mission.id} className={`border-b border-gray-50 dark:border-gray-800/50 transition-colors ${!mission.active ? 'opacity-50' : 'hover:bg-white/50 dark:hover:bg-gray-800/50'}`}>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-gray-800 dark:text-white text-lg">{mission.ref}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">Dica: {mission.hint}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-gray-700 dark:text-gray-300 text-sm">{mission.verification_question}</div>
+                                                        <div className="flex gap-1 mt-2 flex-wrap">
+                                                            {mission.options.map((opt, i) => (
+                                                                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-md border ${i === mission.correct_index ? 'bg-emerald-100 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}>
+                                                                    {opt}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${mission.active ? 'bg-emerald-100 border-emerald-200 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}>
+                                                            {mission.active ? 'ATIVA' : 'INATIVA'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex gap-2 justify-end">
+                                                            <button onClick={() => toggleReadingMissionStatus(mission.id!, mission.active)} className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700">
+                                                                {mission.active ? 'Desativar' : 'Ativar'}
+                                                            </button>
+                                                            <button onClick={() => handleDeleteReadingMission(mission.id!)} className="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40">
+                                                                Excluir
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {readingMissions.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="p-10 text-center text-gray-400 font-bold">
+                                                        Nenhuma Missão da Palavra cadastrada.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'MISSOES' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-xl border border-white/50 dark:border-gray-800/50 overflow-hidden">
+                            <div className="mb-8 bg-pink-50 dark:bg-pink-900/20 p-6 rounded-2xl border border-pink-100 dark:border-pink-900/30">
+                                <h3 className="text-lg font-bold text-pink-900 dark:text-pink-400 mb-4">Nova Missão de Arte</h3>
+                                <div className="flex flex-wrap gap-4 items-end">
+                                    <div className="flex-1 min-w-[200px]">
+                                        <label className="block text-xs font-bold text-pink-600 dark:text-pink-400 mb-1 uppercase tracking-wider">Título da Missão</label>
+                                        <input type="text" value={newMissionTitle} onChange={e => setNewMissionTitle(e.target.value)} placeholder="Ex: A Arca de Noé" className="w-full bg-white dark:bg-gray-800 border border-pink-200 dark:border-pink-800 rounded-lg px-4 py-2 font-bold text-gray-800 dark:text-white" />
+                                    </div>
+                                    <div className="flex-[2] min-w-[250px]">
+                                        <label className="block text-xs font-bold text-pink-600 dark:text-pink-400 mb-1 uppercase tracking-wider">Instrução</label>
+                                        <input type="text" value={newMissionInstruction} onChange={e => setNewMissionInstruction(e.target.value)} placeholder="Ex: Desenhe um barco com muitos animais..." className="w-full bg-white dark:bg-gray-800 border border-pink-200 dark:border-pink-800 rounded-lg px-4 py-2 font-medium text-gray-800 dark:text-white" />
+                                    </div>
+                                    <div className="w-24">
+                                        <label className="block text-xs font-bold text-pink-600 dark:text-pink-400 mb-1 uppercase tracking-wider">Ícone</label>
+                                        <input type="text" value={newMissionIcon} onChange={e => setNewMissionIcon(e.target.value)} placeholder="🚢" className="w-full bg-white dark:bg-gray-800 border border-pink-200 dark:border-pink-800 rounded-lg px-4 py-2 text-center text-xl" />
+                                    </div>
+                                    <button onClick={handleCreateMission} disabled={isCreatingMission} className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition-all h-[42px] disabled:opacity-50">
+                                        {isCreatingMission ? 'Criando...' : 'Criar Missão'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loadingMissions ? (
+                                <div className="p-10 text-center text-gray-500 font-bold">Carregando missões...</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 w-16">Ícone</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Missão</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                                                <th className="p-4 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {missions.map(mission => (
+                                                <tr key={mission.id} className={`border-b border-gray-50 dark:border-gray-800/50 transition-colors ${!mission.active ? 'opacity-50' : 'hover:bg-white/50 dark:hover:bg-gray-800/50'}`}>
+                                                    <td className="p-4 text-3xl">{mission.icon}</td>
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-gray-800 dark:text-white text-lg">{mission.title}</div>
+                                                        <div className="text-sm text-gray-500 dark:text-gray-400">{mission.instruction}</div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${mission.active ? 'bg-emerald-100 border-emerald-200 text-emerald-600 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}>
+                                                            {mission.active ? 'ATIVA' : 'INATIVA'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex gap-2 justify-end">
+                                                            <button onClick={() => toggleMissionStatus(mission.id!, mission.active)} className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-700">
+                                                                {mission.active ? 'Desativar' : 'Ativar'}
+                                                            </button>
+                                                            <button onClick={() => handleDeleteMission(mission.id!)} className="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40">
+                                                                Excluir
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {missions.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="p-10 text-center text-gray-400 font-bold">
+                                                        Nenhuma missão cadastrada ainda.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Modal de Gerenciamento Estendido */}
                 {
                     selectedProfile && (
@@ -1422,7 +1772,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     )
                 }
             </div>
-        </div >
+        </div>
     );
 };
 

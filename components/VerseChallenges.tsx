@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import HomeButton from './HomeButton';
+import { ReadingMissionDbService } from '../services/readingMissionDbService';
 
 interface VerseChallengesProps {
   onComplete: () => void;
@@ -32,41 +32,30 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
 
   useEffect(() => {
     const fetchChallenge = async () => {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
       try {
-        const prompt = `Gere um desafio bíblico para crianças. 
-        1. Escolha um versículo (ex: Salmos 23:1). 
-        2. Crie uma pergunta de verificação simples para garantir que a criança LEU o versículo na bíblia física.
-        Retorne JSON estrito: { 
-          "ref": "Livro Cap:Ver", 
-          "text": "Texto completo", 
-          "hint": "Dica lúdica", 
-          "verificationQuestion": "Pergunta sobre uma palavra específica ou detalhe do versículo",
-          "options": ["Opção 1", "Opção 2", "Opção 3"],
-          "correctIndex": 0 
-        }.`;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                ref: { type: Type.STRING },
-                text: { type: Type.STRING },
-                hint: { type: Type.STRING },
-                verificationQuestion: { type: Type.STRING },
-                options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                correctIndex: { type: Type.NUMBER }
-              },
-              required: ["ref", "text", "hint", "verificationQuestion", "options", "correctIndex"]
-            }
-          }
-        });
-        setChallenge(JSON.parse(response.text || '{}'));
-      } catch (e) {
+        const mission = await ReadingMissionDbService.getDailyMission();
+        if (mission) {
+          setChallenge({
+            ref: mission.ref,
+            text: mission.text,
+            hint: mission.hint,
+            verificationQuestion: mission.verification_question,
+            options: mission.options,
+            correctIndex: mission.correct_index
+          });
+        } else {
+          // Fallback se não houver missões ativas no banco
+          setChallenge({
+            ref: "Salmos 23:1",
+            text: "O Senhor é o meu pastor; nada me faltará.",
+            hint: "Este versículo fala sobre o nosso Pastor cuidadoso.",
+            verificationQuestion: "O que não faltará para quem tem o Senhor como pastor?",
+            options: ["Nada", "Dinheiro", "Comida"],
+            correctIndex: 0
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao carregar missão da palavra:", error);
         setChallenge({
           ref: "Salmos 23:1",
           text: "O Senhor é o meu pastor; nada me faltará.",

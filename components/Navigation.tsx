@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ProfileType } from '../types';
+import EditProfileModal from './EditProfileModal';
 
 // Mapa de rotas para destacar o item ativo
 const ROUTE_MAP: Record<string, string> = {
@@ -39,6 +40,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const router   = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const currentScreen = ROUTE_MAP[pathname] ?? 'HOME';
   const isAdult = profileType === ProfileType.ADULTS;
@@ -74,11 +76,7 @@ const Navigation: React.FC<NavigationProps> = ({
               {theme === 'light' ? '🌙' : '☀️'}
             </button>
           )}
-          {isAdmin && (
-            <button onClick={() => navigate('/admin')} className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-black uppercase tracking-widest hover:shadow-lg transition-all active:scale-95">
-              Painel
-            </button>
-          )}
+          {/* Botão Painel removido conforme solicitado */}
           <button onClick={() => setIsMenuOpen(true)} className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all active:scale-95">
             ☰
           </button>
@@ -133,7 +131,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
             <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-700 flex flex-col md:flex-row gap-4 justify-center">
               {profileId && (
-                <button onClick={() => navigate(`/profile/${profileId}`)} className="flex items-center justify-center space-x-3 px-10 py-5 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black hover:scale-105 transition-transform">
+                <button onClick={() => { setShowEditModal(true); setIsMenuOpen(false); }} className="flex items-center justify-center space-x-3 px-10 py-5 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black hover:scale-105 transition-transform">
                   <span className="text-xl">👤</span>
                   <span className="uppercase tracking-widest text-sm">Meu Perfil</span>
                 </button>
@@ -145,6 +143,18 @@ const Navigation: React.FC<NavigationProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO DE PERFIL */}
+      {showEditModal && profileId && (
+        <EditProfileModal
+          profileId={profileId}
+          onClose={() => setShowEditModal(false)}
+          onUpdate={() => {
+            // Pode dar um reload para refletir a alteração de imediato ou usar state management global
+            window.location.reload();
+          }}
+        />
       )}
     </>
   );
