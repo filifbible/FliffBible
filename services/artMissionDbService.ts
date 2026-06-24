@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { ArtMissionEntity } from '../entities/art-mission.entity';
 
 export interface ArtMissionDb {
   id?: string;
@@ -10,7 +11,7 @@ export interface ArtMissionDb {
 }
 
 export const ArtMissionDbService = {
-  async getAllMissions(): Promise<ArtMissionDb[]> {
+  async getAllMissions(): Promise<ArtMissionEntity[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from('art_missions')
@@ -21,10 +22,12 @@ export const ArtMissionDbService = {
       console.error('Erro ao buscar missões:', error);
       return [];
     }
-    return data as ArtMissionDb[];
+    return data.map((d: any) => new ArtMissionEntity(
+      d.id, d.title, d.instruction, d.icon, d.active, d.created_at
+    ));
   },
 
-  async getActiveMissions(): Promise<ArtMissionDb[]> {
+  async getActiveMissions(): Promise<ArtMissionEntity[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from('art_missions')
@@ -35,10 +38,12 @@ export const ArtMissionDbService = {
       console.error('Erro ao buscar missões ativas:', error);
       return [];
     }
-    return data as ArtMissionDb[];
+    return data.map((d: any) => new ArtMissionEntity(
+      d.id, d.title, d.instruction, d.icon, d.active, d.created_at
+    ));
   },
 
-  async createMission(mission: Omit<ArtMissionDb, 'id' | 'created_at'>): Promise<ArtMissionDb | null> {
+  async createMission(mission: Omit<ArtMissionDb, 'id' | 'created_at'>): Promise<ArtMissionEntity | null> {
     if (!supabase) return null;
     const { data, error } = await supabase
       .from('art_missions')
@@ -50,7 +55,9 @@ export const ArtMissionDbService = {
       console.error('Erro ao criar missão:', error);
       return null;
     }
-    return data as ArtMissionDb;
+    return new ArtMissionEntity(
+      data.id, data.title, data.instruction, data.icon, data.active, data.created_at
+    );
   },
 
   async toggleMissionStatus(id: string, active: boolean): Promise<boolean> {
@@ -81,7 +88,7 @@ export const ArtMissionDbService = {
     return true;
   },
 
-  async getDailyMission(): Promise<ArtMissionDb | null> {
+  async getDailyMission(): Promise<ArtMissionEntity | null> {
     const activeMissions = await this.getActiveMissions();
     if (activeMissions.length === 0) return null;
 
@@ -91,7 +98,7 @@ export const ArtMissionDbService = {
     const daysSinceEpoch = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
     
     // Ordenar as missões por data de criação para garantir uma ordem fixa
-    activeMissions.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    activeMissions.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 
     // O índice da missão é o resto da divisão dos dias pela quantidade de missões
     const missionIndex = daysSinceEpoch % activeMissions.length;
