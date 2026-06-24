@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { ReadingMissionEntity } from '../entities/reading-mission.entity';
 
 export interface ReadingMissionDb {
   id?: string;
@@ -13,7 +14,7 @@ export interface ReadingMissionDb {
 }
 
 export const ReadingMissionDbService = {
-  async getAllMissions(): Promise<ReadingMissionDb[]> {
+  async getAllMissions(): Promise<ReadingMissionEntity[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from('reading_missions')
@@ -24,10 +25,12 @@ export const ReadingMissionDbService = {
       console.error('Erro ao buscar missões de leitura:', error);
       return [];
     }
-    return data as ReadingMissionDb[];
+    return data.map((d: any) => new ReadingMissionEntity(
+      d.id, d.ref, d.text, d.hint, d.verification_question, d.options, d.correct_index, d.active, d.created_at
+    ));
   },
 
-  async getActiveMissions(): Promise<ReadingMissionDb[]> {
+  async getActiveMissions(): Promise<ReadingMissionEntity[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from('reading_missions')
@@ -38,10 +41,12 @@ export const ReadingMissionDbService = {
       console.error('Erro ao buscar missões ativas:', error);
       return [];
     }
-    return data as ReadingMissionDb[];
+    return data.map((d: any) => new ReadingMissionEntity(
+      d.id, d.ref, d.text, d.hint, d.verification_question, d.options, d.correct_index, d.active, d.created_at
+    ));
   },
 
-  async createMission(mission: Omit<ReadingMissionDb, 'id' | 'created_at'>): Promise<ReadingMissionDb | null> {
+  async createMission(mission: Omit<ReadingMissionDb, 'id' | 'created_at'>): Promise<ReadingMissionEntity | null> {
     if (!supabase) return null;
     const { data, error } = await supabase
       .from('reading_missions')
@@ -53,7 +58,9 @@ export const ReadingMissionDbService = {
       console.error('Erro ao criar missão de leitura:', error);
       return null;
     }
-    return data as ReadingMissionDb;
+    return new ReadingMissionEntity(
+      data.id, data.ref, data.text, data.hint, data.verification_question, data.options, data.correct_index, data.active, data.created_at
+    );
   },
 
   async toggleMissionStatus(id: string, active: boolean): Promise<boolean> {
@@ -84,14 +91,14 @@ export const ReadingMissionDbService = {
     return true;
   },
 
-  async getDailyMission(): Promise<ReadingMissionDb | null> {
+  async getDailyMission(): Promise<ReadingMissionEntity | null> {
     const activeMissions = await this.getActiveMissions();
     if (activeMissions.length === 0) return null;
 
     const today = new Date();
     const daysSinceEpoch = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
     
-    activeMissions.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    activeMissions.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
     const missionIndex = daysSinceEpoch % activeMissions.length;
     
     return activeMissions[missionIndex];

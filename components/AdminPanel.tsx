@@ -8,8 +8,10 @@ import { NoticeService } from '../services/noticeService';
 import { Notice } from '../types';
 import { AdminLogService, AdminLog } from '../services/adminLogService';
 import { MaintenanceService, MaintenanceSettings } from '../services/maintenanceService';
-import { ArtMissionDbService, ArtMissionDb } from '../services/artMissionDbService';
-import { ReadingMissionDbService, ReadingMissionDb } from '../services/readingMissionDbService';
+import { ArtMissionDbService } from '../services/artMissionDbService';
+import { ArtMissionEntity } from '../entities/art-mission.entity';
+import { ReadingMissionDbService } from '../services/readingMissionDbService';
+import { ReadingMissionEntity } from '../entities/reading-mission.entity';
 import HomeButton from './HomeButton';
 
 interface AdminPanelProps {
@@ -23,7 +25,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [activeTab, setActiveTab] = useState<'USERS' | 'SHOP' | 'COUPONS' | 'CREATE_USER' | 'FATURAMENTO' | 'AVISOS' | 'LOGS' | 'MANUTENCAO' | 'MISSOES' | 'MISSAO_LEITURA'>('USERS');
 
     // Reading Missions states
-    const [readingMissions, setReadingMissions] = useState<ReadingMissionDb[]>([]);
+    const [readingMissions, setReadingMissions] = useState<ReadingMissionEntity[]>([]);
     const [loadingReadingMissions, setLoadingReadingMissions] = useState(false);
     const [newReadingMissionRef, setNewReadingMissionRef] = useState('');
     const [newReadingMissionText, setNewReadingMissionText] = useState('');
@@ -51,7 +53,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const [newUserName, setNewUserName] = useState('');
 
     // Missions states
-    const [missions, setMissions] = useState<ArtMissionDb[]>([]);
+    const [missions, setMissions] = useState<ArtMissionEntity[]>([]);
     const [loadingMissions, setLoadingMissions] = useState(false);
     const [newMissionTitle, setNewMissionTitle] = useState('');
     const [newMissionInstruction, setNewMissionInstruction] = useState('');
@@ -1469,10 +1471,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">Dica: {mission.hint}</div>
                                                     </td>
                                                     <td className="p-4">
-                                                        <div className="font-bold text-gray-700 dark:text-gray-300 text-sm">{mission.verification_question}</div>
+                                                        <div className="font-bold text-gray-700 dark:text-gray-300 text-sm">{mission.verificationQuestion}</div>
                                                         <div className="flex gap-1 mt-2 flex-wrap">
                                                             {mission.options.map((opt, i) => (
-                                                                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-md border ${i === mission.correct_index ? 'bg-emerald-100 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}>
+                                                                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-md border ${i === mission.correctIndex ? 'bg-emerald-100 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}>
                                                                     {opt}
                                                                 </span>
                                                             ))}

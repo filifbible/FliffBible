@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import HomeButton from './HomeButton';
 import { ReadingMissionDbService } from '../services/readingMissionDbService';
+import { commandBus } from '../commands/command-bus';
+import { CompleteVerseChallengeCommand } from '../commands/handlers/complete-verse-challenge.handler';
 
 interface VerseChallengesProps {
   onComplete: () => void;
@@ -35,14 +37,14 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
       try {
         const mission = await ReadingMissionDbService.getDailyMission();
         if (mission) {
-          setChallenge({
-            ref: mission.ref,
-            text: mission.text,
-            hint: mission.hint,
-            verificationQuestion: mission.verification_question,
-            options: mission.options,
-            correctIndex: mission.correct_index
-          });
+            setChallenge({
+              ref: mission.ref,
+              text: mission.text,
+              hint: mission.hint,
+              verificationQuestion: mission.verificationQuestion,
+              options: mission.options,
+              correctIndex: mission.correctIndex
+            });
         } else {
           // Fallback se não houver missões ativas no banco
           setChallenge({
@@ -73,10 +75,23 @@ const VerseChallenges: React.FC<VerseChallengesProps> = ({ onComplete, onGoToBib
     else setStep('SUCCESS');
   }, [alreadyDone]);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (selectedOption === challenge?.correctIndex) {
-      onComplete();
-      setStep('SUCCESS');
+      setLoading(true);
+      try {
+        const profileId = localStorage.getItem('selectedProfileId') || '';
+        await commandBus.execute(new CompleteVerseChallengeCommand({
+          profileId,
+          challengeId: 'daily-verse',
+          rewardCoins: 50
+        }));
+        onComplete();
+        setStep('SUCCESS');
+      } catch (e) {
+        console.error('Erro ao completar missão:', e);
+      } finally {
+        setLoading(false);
+      }
     } else {
       setError(true);
       setTimeout(() => setError(false), 2000);
