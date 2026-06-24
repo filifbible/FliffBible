@@ -5,12 +5,13 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { ProfileService } from '@/services/profileService';
 import { ArtMissionTheme } from '@/types';
+import { galleryService } from '@/services/galleryService';
 
-const PhysicalArtMission = dynamic(() => import('@/components/PhysicalArtMission'), {
+const PaintingRoom = dynamic(() => import('@/components/PaintingRoom'), {
   loading: () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-pink-50/50 dark:bg-gray-900">
       <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-4 text-pink-600 font-bold animate-pulse">Buscando sua missão artística...</p>
+      <p className="mt-4 text-pink-600 font-bold animate-pulse">Buscando o ateliê...</p>
     </div>
   ),
 });
@@ -20,6 +21,8 @@ export default function ArtMissionPage() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [lastArtDate, setLastArtDate] = useState<string | null>(null);
   const [savedTheme, setSavedTheme] = useState<ArtMissionTheme | null>(null);
+  const [savedPaintings, setSavedPaintings] = useState<string[]>([]);
+  const [unlockedItems, setUnlockedItems] = useState<string[]>([]);
 
   useEffect(() => {
     const id = localStorage.getItem('selectedProfileId');
@@ -34,9 +37,17 @@ export default function ArtMissionPage() {
         const profile = await ProfileService.getProfile(id!);
         if (profile) {
           setLastArtDate(profile.last_art_date || null);
-          // Suporte a ambos os padrões de nomenclatura encontrados no código
           const theme = (profile as any).art_mission_theme || (profile as any).artMissionTheme;
           setSavedTheme(theme || null);
+          setUnlockedItems(profile.unlocked_items || []);
+          
+          // Carregar pinturas da galeria
+          try {
+            const urls = await galleryService.listImages(id!);
+            setSavedPaintings(urls);
+          } catch (e) {
+            console.error('Erro ao carregar imagens da galeria', e);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar perfil:', error);
@@ -45,16 +56,27 @@ export default function ArtMissionPage() {
     loadProfile();
   }, [router]);
 
-  const handleSave = async (imagePath: string) => {
-    // O processamento completo (upload, registro, moedas) agora é feito 
-    // pelo CompleteArtChallengeHandler via Command Bus no componente filho.
-    router.push('/dashboard');
+  const handleSave = async (imagePathOrBase64: string, isPhysical: boolean) => {
+    if (isPhysical) {
+      router.push('/dashboard');
+    } else {
+      if (!profileId) return;
+      try {
+        // Upload via gallery service directly
+        const path = await galleryService.uploadImage(imagePathOrBase64, profileId);
+        // Atualiza a galeria com as imagens
+        const urls = await galleryService.listImages(profileId);
+        setSavedPaintings(urls);
+      } catch (e) {
+        console.error(e);
+        alert('Erro ao salvar sua arte digital.');
+      }
+    }
   };
 
   const handleThemeGenerated = async (theme: ArtMissionTheme) => {
     if (!profileId) return;
     try {
-      // Salva o tema gerado no perfil para persistência no mesmo dia
       await ProfileService.updateProfile(profileId, { 
         ['art_mission_theme' as any]: theme 
       });
@@ -67,14 +89,17 @@ export default function ArtMissionPage() {
   const isCompleted = lastArtDate === todayStr;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white dark:from-gray-950 dark:to-gray-900">
-      <PhysicalArtMission
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white dark:from-gray-950 dark:to-gray-900 pt-8">
+      <PaintingRoom
         onSave={handleSave}
-        onCancel={() => router.back()}
-        onHome={() => router.push('/dashboard')}
-        onThemeGenerated={handleThemeGenerated}
-        savedTheme={savedTheme || undefined}
-        isCompleted={isCompleted}
+        savedPaintings={savedPaintings}
+        unlockedItems={unlockedItems}
+        onNavigateToShop={() => router.push('/shop')}
+        initialMode="SELECTION"
+        artMissionTheme={savedTheme || undefined}
+        onArtMissionThemeGenerated={handleThemeGenerated}
+        isArtMissionCompleted={isCompleted}
+        onBack={() => router.push('/dashboard')}
       />
     </div>
   );

@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import PhotoCapture from './PhotoCapture';
 import { ArtMissionTheme } from '../types';
 import { galleryService } from '../services/galleryService';
@@ -33,33 +32,32 @@ const PhysicalArtMission: React.FC<PhysicalArtMissionProps> = ({ onSave, onCance
       }
 
       setLoading(true);
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' });
       try {
-        const prompt = `Gere um tema criativo de desenho bíblico para crianças. 
-        Retorne JSON: { "title": "O que desenhar", "instruction": "Como desenhar (curto)", "icon": "Emoji" }.`;
+        const { ArtMissionDbService } = await import('../services/artMissionDbService');
+        const dbMission = await ArtMissionDbService.getDailyMission();
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                instruction: { type: Type.STRING },
-                icon: { type: Type.STRING }
-              },
-              required: ["title", "instruction", "icon"]
-            }
-          }
-        });
+        let newTheme: ArtMissionTheme;
+        if (dbMission) {
+          newTheme = {
+            title: dbMission.title,
+            instruction: dbMission.instruction,
+            icon: dbMission.icon,
+            date: today
+          };
+        } else {
+          // Fallback se não houver missão cadastrada
+          newTheme = {
+            title: "A Arca de Noé",
+            instruction: "Desenhe um grande barco com muitos animais e um arco-íris!",
+            icon: "🚢",
+            date: today
+          };
+        }
 
-        const generated = JSON.parse(response.text || '{}');
-        const newTheme: ArtMissionTheme = { ...generated, date: today };
         setTheme(newTheme);
         onThemeGenerated(newTheme);
       } catch (e) {
+        console.error('Erro ao buscar missão no banco', e);
         const fallbackTheme: ArtMissionTheme = {
           title: "A Arca de Noé",
           instruction: "Desenhe um grande barco com muitos animais e um arco-íris!",

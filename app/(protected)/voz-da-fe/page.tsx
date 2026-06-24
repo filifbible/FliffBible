@@ -83,7 +83,29 @@ export default function VozDaFePage() {
       date: new Date().toLocaleDateString('pt-BR'),
     };
 
-    const newRecordings = [...recordings, newRecording];
+    let newRecordings = [...recordings, newRecording];
+    
+    // Deixa no máximo 6 gravações, excluindo a mais antiga (no início do array)
+    if (newRecordings.length > 6) {
+      const recordsToRemove = newRecordings.slice(0, newRecordings.length - 6);
+      newRecordings = newRecordings.slice(newRecordings.length - 6);
+      
+      // Apagar arquivos antigos do Supabase
+      try {
+        const { supabase } = await import('@/services/supabase');
+        if (supabase) {
+          const pathsToRemove = recordsToRemove
+            .map(rec => rec.audio.split('/recordings/')[1])
+            .filter(Boolean); // Pega apenas a parte do path
+          
+          if (pathsToRemove.length > 0) {
+            await supabase.storage.from('recordings').remove(pathsToRemove);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao apagar áudio antigo do storage", err);
+      }
+    }
     
     try {
       await ProfileService.updateProfile(profileId, {

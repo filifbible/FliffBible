@@ -20,6 +20,7 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchVerse = async () => {
     setLoadingVerse(true);
@@ -77,6 +78,12 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
 
       mediaRecorder.start();
       setIsRecording(true);
+
+      // Limita a gravação a 30 segundos
+      recordingTimeoutRef.current = setTimeout(() => {
+        stopRecording();
+      }, 30000);
+
     } catch (err: any) {
       console.error("Erro ao gravar:", err);
       alert("Erro ao acessar o microfone: " + (err.message || err));
@@ -84,6 +91,10 @@ const BibleReadingKids: React.FC<BibleReadingKidsProps> = ({ onSaveRecording, re
   };
 
   const stopRecording = () => {
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
